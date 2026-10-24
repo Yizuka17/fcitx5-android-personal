@@ -48,7 +48,7 @@ class InputWindowManager : UniqueViewComponent<InputWindowManager, FrameLayout>(
         remove: View,
         add: View
     ) {
-        if (disableAnimation)
+        if (disableAnimation || (exitAnimation == null && enterAnimation == null))
             return
         enterAnimation?.addTarget(add)
         exitAnimation?.addTarget(remove)

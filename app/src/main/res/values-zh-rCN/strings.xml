@@ -369,4 +369,19 @@
     <string name="key_border_stroke">启用按键边框描边</string>
     <string name="preferred_voice_input">首选语音输入</string>
     <string name="edit_text_playground">编辑文本游乐场</string>
+    <string name="keyboard_height_percent_base">键盘高度计算基准</string>
+    <string name="display_metrics">显示区域</string>
+    <string name="real_size">物理屏幕尺寸</string>
+    <string name="bottom_bar">键盘底栏</string>
+    <string name="bottom_bar_auto">自动识别</string>
+    <string name="bottom_bar_on">开启底栏</string>
+    <string name="bottom_bar_off">关闭底栏</string>
+    <string name="bottom_bar_left_action">底栏左侧按键</string>
+    <string name="bottom_bar_right_action">底栏右侧按键</string>
+    <string name="bottom_bar_switch_input_method">切换输入法</string>
+    <string name="bottom_bar_switch_language">切换语言</string>
+    <string name="bottom_bar_symbols">符号</string>
+    <string name="bottom_bar_emoji">表情</string>
+    <string name="bottom_bar_no_action">无</string>
+    <string name="bottom_bar_picker_hint">长按选择输入法</string>
 </resources>

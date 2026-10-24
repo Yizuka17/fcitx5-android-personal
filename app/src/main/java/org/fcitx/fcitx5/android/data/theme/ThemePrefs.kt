@@ -14,6 +14,8 @@ import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreferenceCategory
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreferenceEnum
+import org.fcitx.fcitx5.android.input.navigation.BottomBarAction
+import org.fcitx.fcitx5.android.input.navigation.BottomBarMode
 
 class ThemePrefs(sharedPreferences: SharedPreferences) :
     ManagedPreferenceCategory(R.string.theme, sharedPreferences) {
@@ -35,6 +37,18 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     }
 
     val keyBorder = switch(R.string.key_border, "key_border", false)
+
+    val bottomBarMode = enumList(
+        R.string.bottom_bar, "bottom_bar_mode", BottomBarMode.Auto
+    )
+    val bottomBarLeftAction = enumList(
+        R.string.bottom_bar_left_action, "bottom_bar_left_action", BottomBarAction.HideKeyboard,
+        enableUiOn = { bottomBarMode.getValue() != BottomBarMode.Off }
+    )
+    val bottomBarRightAction = enumList(
+        R.string.bottom_bar_right_action, "bottom_bar_right_action", BottomBarAction.SwitchLanguage,
+        enableUiOn = { bottomBarMode.getValue() != BottomBarMode.Off }
+    )
 
     val keyBorderStroke = switch(
         R.string.key_border_stroke, "key_border_stroke", false,

@@ -18,10 +18,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
+import org.fcitx.fcitx5.android.data.prefs.ManagedPreferenceProvider
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.data.theme.ThemePrefs.NavbarBackground
 import org.fcitx.fcitx5.android.input.keyboard.TextKeyboard
+import org.fcitx.fcitx5.android.input.navigation.ImeBottomBar
+import org.fcitx.fcitx5.android.input.navigation.SystemImeNavigation
 import org.fcitx.fcitx5.android.utils.navbarFrameHeight
 import splitties.dimensions.dp
 import splitties.views.backgroundColor
@@ -90,6 +93,17 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
     private var keyboardWidth = -1
     private var keyboardHeight = -1
     private lateinit var fakeKeyboardWindow: TextKeyboard
+    private var previewTheme = theme
+    private var bottomBar: ImeBottomBar? = null
+    private val bottomBarPrefs = ThemeManager.prefs.run {
+        setOf(bottomBarMode.key, bottomBarLeftAction.key, bottomBarRightAction.key)
+    }
+    private val bottomBarChangeListener = ManagedPreferenceProvider.OnChangeListener { key ->
+        if (key in bottomBarPrefs) {
+            updateBottomBar()
+            recalculateSize()
+        }
+    }
 
     private val fakeInputView = constraintLayout {
         add(bkg, lParams {
@@ -110,6 +124,7 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
             recalculateSize()
             onSizeMeasured?.invoke(intrinsicWidth, intrinsicHeight)
             navbarBackground.registerOnChangeListener(navbarBkgChangeListener)
+            ThemeManager.prefs.registerOnChangeListener(bottomBarChangeListener)
         }
 
         override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -118,6 +133,7 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
 
         override fun onDetachedFromWindow() {
             navbarBackground.unregisterOnChangeListener(navbarBkgChangeListener)
+            ThemeManager.prefs.unregisterOnChangeListener(bottomBarChangeListener)
             super.onDetachedFromWindow()
         }
     }
@@ -156,6 +172,16 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
         intrinsicHeight = barHeight + keyboardHeight
         // extra bottom padding
         intrinsicHeight += keyboardBottomPaddingPx
+        bottomBar?.root?.let { bar ->
+            val visible = ThemeManager.prefs.bottomBarMode.getValue().shouldShow(
+                SystemImeNavigation.previewControlsVisible(root), floating = false
+            )
+            bar.visibility = if (visible) View.VISIBLE else View.GONE
+            bar.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                horizontalMargin = keyboardSidePaddingPx
+            }
+            if (visible) intrinsicHeight += ctx.dp(ImeBottomBar.HEIGHT)
+        }
         // windowInsets navbar padding
         if (navbarBackground.getValue() == NavbarBackground.Full) {
             ViewCompat.getRootWindowInsets(root)?.also {
@@ -180,6 +206,7 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
     }
 
     fun setTheme(theme: Theme, background: Drawable? = null) {
+        previewTheme = theme
         setBackground(background ?: theme.backgroundDrawable(keyBorder))
         if (this::fakeKeyboardWindow.isInitialized) {
             fakeInputView.removeView(fakeKeyboardWindow)
@@ -193,6 +220,27 @@ class KeyboardPreviewUi(override val ctx: Context, val theme: Theme) : Ui {
                 below(fakeKawaiiBar)
                 centerHorizontally(keyboardSidePaddingPx)
             })
+        }
+        updateBottomBar()
+        recalculateSize()
+    }
+
+    private fun updateBottomBar() {
+        bottomBar?.root?.let(fakeInputView::removeView)
+        // Like the existing preview keyboard, these buttons show the configured
+        // layout without executing IME actions against the settings Activity.
+        bottomBar = ImeBottomBar(
+            ctx, previewTheme,
+            ThemeManager.prefs.bottomBarLeftAction.getValue(),
+            ThemeManager.prefs.bottomBarRightAction.getValue(),
+            onAction = {}, onPicker = {}, interactive = false,
+        ).also { bar ->
+            fakeInputView.apply {
+                add(bar.root, lParams(matchConstraints, ctx.dp(ImeBottomBar.HEIGHT)) {
+                    below(fakeKeyboardWindow)
+                    centerHorizontally(keyboardSidePaddingPx)
+                })
+            }
         }
     }
 }

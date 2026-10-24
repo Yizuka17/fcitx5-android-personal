@@ -369,4 +369,19 @@
     <string name="key_border_stroke">Habilitar trazo para borde clave</string>
     <string name="preferred_voice_input">Entrada de voz preferida</string>
     <string name="edit_text_playground">Editar texto patio de juegos</string>
+    <string name="keyboard_height_percent_base">Base para calcular la altura del teclado</string>
+    <string name="display_metrics">Área de pantalla disponible</string>
+    <string name="real_size">Tamaño físico de la pantalla</string>
+    <string name="bottom_bar">Barra inferior del teclado</string>
+    <string name="bottom_bar_auto">Detectar automáticamente</string>
+    <string name="bottom_bar_on">Mostrar barra</string>
+    <string name="bottom_bar_off">Ocultar barra</string>
+    <string name="bottom_bar_left_action">Botón izquierdo de la barra inferior</string>
+    <string name="bottom_bar_right_action">Botón derecho de la barra inferior</string>
+    <string name="bottom_bar_switch_input_method">Cambiar aplicación de teclado</string>
+    <string name="bottom_bar_switch_language">Cambiar idioma</string>
+    <string name="bottom_bar_symbols">Símbolos</string>
+    <string name="bottom_bar_emoji">Emojis</string>
+    <string name="bottom_bar_no_action">Ninguno</string>
+    <string name="bottom_bar_picker_hint">Mantén pulsado para elegir un método de entrada</string>
 </resources>

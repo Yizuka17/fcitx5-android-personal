@@ -132,13 +132,14 @@ class PickerWindow(
             }
         }
         pager.apply {
+            isSaveEnabled = false
             adapter = pickerPagesAdapter
-            // show first symbol category by default, rather than recently used
-            val range = pickerPagesAdapter.getRangeOfCategoryIndex(1)
+            // The first page contains recently used symbols/emoji.
+            val range = pickerPagesAdapter.getRangeOfCategoryIndex(0)
             setCurrentItem(range.first, false)
             // update initial tab and page manually to avoid
             // "Adding or removing callbacks during dispatch to callbacks"
-            tabsUi.activateTab(1)
+            tabsUi.activateTab(0)
             paginationUi.updatePageCount(range.run { last - first + 1 })
             registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageScrolled(
@@ -161,9 +162,21 @@ class PickerWindow(
 
     override fun onCreateBarExtension() = pickerLayout.tabsUi.root
 
+    override fun beforeAttached() {
+        pickerPagesAdapter.refreshIfNeeded()
+        // Reset the retained pager before it is added to the visible hierarchy. Doing
+        // this in onAttached races ViewPager2's pending layout/scroll restoration.
+        (pickerLayout.pager.getChildAt(0) as? RecyclerView)?.stopScroll()
+        pickerLayout.pager.isUserInputEnabled = true
+        pickerPagesAdapter.notifyItemChanged(0)
+        pickerLayout.pager.setCurrentItem(0, false)
+        pickerLayout.tabsUi.activateTab(0)
+        pickerLayout.paginationUi.updatePageCount(1)
+        pickerLayout.paginationUi.updateScrollProgress(0, 0f)
+    }
+
     override fun onAttached() {
         pickerLayout.embeddedKeyboard.also {
-            pickerPagesAdapter.refreshIfNeeded()
             it.onReturnDrawableUpdate(returnKeyDrawable.resourceId)
             it.keyActionListener = keyActionListener
         }

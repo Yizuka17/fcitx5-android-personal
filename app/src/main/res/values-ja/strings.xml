@@ -369,4 +369,19 @@
     <string name="key_border_stroke">キー境界線のストロークを有効にする</string>
     <string name="preferred_voice_input">優先される音声入力</string>
     <string name="edit_text_playground">編集テキストプレイグラウンド</string>
+    <string name="keyboard_height_percent_base">キーボードの高さの基準</string>
+    <string name="display_metrics">利用可能な表示領域</string>
+    <string name="real_size">画面全体のサイズ</string>
+    <string name="bottom_bar">キーボードの下部バー</string>
+    <string name="bottom_bar_auto">自動検出</string>
+    <string name="bottom_bar_on">下部バーを表示</string>
+    <string name="bottom_bar_off">下部バーを非表示</string>
+    <string name="bottom_bar_left_action">下部バーの左ボタン</string>
+    <string name="bottom_bar_right_action">下部バーの右ボタン</string>
+    <string name="bottom_bar_switch_input_method">入力方法を切り替え</string>
+    <string name="bottom_bar_switch_language">言語を切り替え</string>
+    <string name="bottom_bar_symbols">記号</string>
+    <string name="bottom_bar_emoji">絵文字</string>
+    <string name="bottom_bar_no_action">なし</string>
+    <string name="bottom_bar_picker_hint">長押しで入力方法を選択</string>
 </resources>

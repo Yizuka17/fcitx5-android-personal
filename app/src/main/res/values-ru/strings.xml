@@ -369,4 +369,19 @@
     <string name="handwriting_model_check_timed_out_settings">Время проверки модели истекло. Перепроверьте модели или перезагрузите механизм рукописного ввода, а затем повторите попытку.</string>
     <string name="preferred_voice_input">Предпочтительный голосовой ввод</string>
     <string name="edit_text_playground">Игровая площадка EditText</string>
+    <string name="keyboard_height_percent_base">Основа расчёта высоты клавиатуры</string>
+    <string name="display_metrics">Доступная область экрана</string>
+    <string name="real_size">Физический размер экрана</string>
+    <string name="bottom_bar">Нижняя панель клавиатуры</string>
+    <string name="bottom_bar_auto">Определять автоматически</string>
+    <string name="bottom_bar_on">Показывать панель</string>
+    <string name="bottom_bar_off">Скрывать панель</string>
+    <string name="bottom_bar_left_action">Левая кнопка нижней панели</string>
+    <string name="bottom_bar_right_action">Правая кнопка нижней панели</string>
+    <string name="bottom_bar_switch_input_method">Сменить приложение ввода</string>
+    <string name="bottom_bar_switch_language">Сменить язык</string>
+    <string name="bottom_bar_symbols">Символы</string>
+    <string name="bottom_bar_emoji">Эмодзи</string>
+    <string name="bottom_bar_no_action">Нет</string>
+    <string name="bottom_bar_picker_hint">Удерживайте для выбора метода ввода</string>
 </resources>

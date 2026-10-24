@@ -369,4 +369,19 @@
     <string name="key_border_stroke">Aktivieren Sie den Strich für den Tastenrand</string>
     <string name="preferred_voice_input">Bevorzugte Spracheingabe</string>
     <string name="edit_text_playground">EditText-Spielplatz</string>
+    <string name="keyboard_height_percent_base">Bezugsgröße für die Tastaturhöhe</string>
+    <string name="display_metrics">Verfügbarer Anzeigebereich</string>
+    <string name="real_size">Physische Bildschirmgröße</string>
+    <string name="bottom_bar">Untere Tastaturleiste</string>
+    <string name="bottom_bar_auto">Automatisch erkennen</string>
+    <string name="bottom_bar_on">Leiste anzeigen</string>
+    <string name="bottom_bar_off">Leiste ausblenden</string>
+    <string name="bottom_bar_left_action">Linke Taste der unteren Leiste</string>
+    <string name="bottom_bar_right_action">Rechte Taste der unteren Leiste</string>
+    <string name="bottom_bar_switch_input_method">Eingabemethode wechseln</string>
+    <string name="bottom_bar_switch_language">Sprache wechseln</string>
+    <string name="bottom_bar_symbols">Symbole</string>
+    <string name="bottom_bar_emoji">Emoji</string>
+    <string name="bottom_bar_no_action">Keine</string>
+    <string name="bottom_bar_picker_hint">Gedrückt halten, um eine Eingabemethode auszuwählen</string>
 </resources>

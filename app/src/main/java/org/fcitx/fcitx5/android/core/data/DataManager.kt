@@ -57,7 +57,7 @@ object DataManager {
 
     // should be consistent with the deserialization in DataDescriptorPlugin (:build-logic)
     private fun deserializeDataDescriptor(raw: String): DataDescriptor {
-        return json.decodeFromString<DataDescriptor>(raw)
+        return json.decodeFromString<DataDescriptor>(raw).normalizePaths()
     }
 
     private fun serializeDataDescriptor(descriptor: DataDescriptor): String {
@@ -227,6 +227,18 @@ object DataManager {
         val oldDescriptor = destDescriptorFile
             .runCatching { deserializeDataDescriptor(bufferedReader().use { it.readText() }) }
             .getOrElse { DataDescriptor("", emptyMap(), emptyMap()) }
+            .let { cached ->
+                cached.checkInstalledFiles(dataDir).also { installed ->
+                    if (installed !== cached) {
+                        Timber.w(
+                            "Repairing installed assets in %s: %d missing files/directories, %d invalid links",
+                            dataDir,
+                            cached.files.size - installed.files.size,
+                            cached.symlinks.size - installed.symlinks.size
+                        )
+                    }
+                }
+            }
 
         // load app's data descriptor
         val mainDescriptor = appContext.assets.getDataDescriptor()

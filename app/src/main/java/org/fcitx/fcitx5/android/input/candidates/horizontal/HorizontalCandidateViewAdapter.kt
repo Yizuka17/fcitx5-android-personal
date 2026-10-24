@@ -39,6 +39,13 @@ open class HorizontalCandidateViewAdapter(val theme: Theme) :
         notifyDataSetChanged()
     }
 
+    fun appendCandidates(data: Array<CandidateWord>) {
+        if (data.isEmpty()) return
+        val start = candidates.size
+        candidates += data
+        notifyItemRangeInserted(start, data.size)
+    }
+
     override fun getItemCount() = candidates.size
 
     override fun getItemId(position: Int) = candidates.getOrNull(position).hashCode().toLong()

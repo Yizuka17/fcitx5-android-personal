@@ -9,6 +9,7 @@
 #include <memory>
 #include <future>
 #include <fstream>
+#include <stdexcept>
 
 #include <android/log.h>
 
@@ -81,7 +82,7 @@ public:
         return uv_run(get_event_base(), UV_RUN_ONCE);
     }
 
-    void startup(const std::function<void(fcitx::AddonInstance *)> &setupCallback) {
+    void startup(const std::function<void(fcitx::AddonInstance *)> &setupCallback) try {
         p_instance = std::make_unique<fcitx::Instance>(0, nullptr);
         p_instance->addonManager().registerLoader(std::make_unique<fcitx::AndroidSharedLibraryLoader>());
         p_dispatcher = std::make_unique<fcitx::EventDispatcher>();
@@ -89,10 +90,19 @@ public:
         p_instance->initialize();
         auto &addonMgr = p_instance->addonManager();
         p_frontend = addonMgr.addon("androidfrontend");
+        if (!p_frontend) {
+            throw std::runtime_error("Required addon androidfrontend failed to load. Check the installed assets and addon loader logs.");
+        }
         p_quickphrase = addonMgr.addon("quickphrase");
         p_unicode = addonMgr.addon("unicode");
         p_clipboard = addonMgr.addon("clipboard", true);
         setupCallback(p_frontend);
+    } catch (...) {
+        if (p_dispatcher) {
+            p_dispatcher->detach();
+        }
+        resetGlobalPointers();
+        throw;
     }
 
     void reloadConfig() {
@@ -717,21 +727,28 @@ Java_org_fcitx_fcitx5_android_core_Fcitx_startupFcitx(
     umask(007);
     fcitx::StandardPaths::global().syncUmask();
 
-    Fcitx::Instance().startup([&](auto *androidfrontend) {
-        FCITX_INFO() << "Setting up callback";
-        readyCallback();
-        androidfrontend->template call<fcitx::IAndroidFrontend::setCandidateListCallback>(candidateListCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setCommitStringCallback>(commitStringCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setPreeditCallback>(preeditCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setInputPanelCallback>(inputPanelCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setKeyEventCallback>(keyEventCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setInputMethodChangeCallback>(imChangeCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setStatusAreaUpdateCallback>(statusAreaUpdateCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setDeleteSurroundingCallback>(deleteSurroundingCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setPagedCandidateCallback>(pagedCandidateCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setSwitchInputMethodCallback>(switchInputMethodCallback);
-        androidfrontend->template call<fcitx::IAndroidFrontend::setToastCallback>(toastCallback);
-    });
+    try {
+        Fcitx::Instance().startup([&](auto *androidfrontend) {
+            FCITX_INFO() << "Setting up callback";
+            androidfrontend->template call<fcitx::IAndroidFrontend::setCandidateListCallback>(candidateListCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setCommitStringCallback>(commitStringCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setPreeditCallback>(preeditCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setInputPanelCallback>(inputPanelCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setKeyEventCallback>(keyEventCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setInputMethodChangeCallback>(imChangeCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setStatusAreaUpdateCallback>(statusAreaUpdateCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setDeleteSurroundingCallback>(deleteSurroundingCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setPagedCandidateCallback>(pagedCandidateCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setSwitchInputMethodCallback>(switchInputMethodCallback);
+            androidfrontend->template call<fcitx::IAndroidFrontend::setToastCallback>(toastCallback);
+        });
+    } catch (const std::exception &e) {
+        FCITX_ERROR() << "Failed to start Fcitx: " << e.what();
+        auto exception = JRef<jclass>(env, env->FindClass("java/lang/IllegalStateException"));
+        env->ThrowNew(exception, e.what());
+        return;
+    }
+    readyCallback();
     FCITX_INFO() << "Finishing startup";
 }
 
@@ -972,9 +989,9 @@ Java_org_fcitx_fcitx5_android_core_Fcitx_setFcitxAddonState(JNIEnv *env, jclass 
     const auto enabled = env->GetBooleanArrayElements(state, nullptr);
     for (int i = 0; i < nameLength; i++) {
         auto jName = JRef<jstring>(env, env->GetObjectArrayElement(name, i));
-        map.insert({CString(env, jName), enabled[i]});
+        map.emplace(CString(env, jName), enabled[i]);
     }
-    env->ReleaseBooleanArrayElements(state, enabled, 0);
+    env->ReleaseBooleanArrayElements(state, enabled, JNI_ABORT);
     Fcitx::Instance().setAddonState(map);
 }
 

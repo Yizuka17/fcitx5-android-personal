@@ -9,7 +9,10 @@ import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Canvas
 import android.graphics.Outline
+import android.graphics.Point
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
@@ -17,6 +20,7 @@ import android.os.Build
 import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InlineSuggestionsResponse
@@ -24,6 +28,7 @@ import android.widget.ImageView
 import androidx.annotation.Keep
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.Guideline
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.updateLayoutParams
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.CapabilityFlags
@@ -42,8 +47,14 @@ import org.fcitx.fcitx5.android.input.broadcast.ReturnKeyDrawableComponent
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateComponent
 import org.fcitx.fcitx5.android.input.handwriting.HandwritingWindow
 import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
+import org.fcitx.fcitx5.android.input.keyboard.KeyboardHeightPercentBase
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.keyboard.OneHandedMode
+import org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow
+import org.fcitx.fcitx5.android.input.navigation.BottomBarAction
+import org.fcitx.fcitx5.android.input.navigation.ImeBottomBar
+import org.fcitx.fcitx5.android.input.navigation.SystemImeNavigation
+import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import org.fcitx.fcitx5.android.input.picker.emojiPicker
 import org.fcitx.fcitx5.android.input.picker.emoticonPicker
 import org.fcitx.fcitx5.android.input.picker.symbolPicker
@@ -51,6 +62,9 @@ import org.fcitx.fcitx5.android.input.popup.PopupComponent
 import org.fcitx.fcitx5.android.input.preedit.PreeditComponent
 import org.fcitx.fcitx5.android.input.wm.InputWindowManager
 import org.fcitx.fcitx5.android.utils.unset
+import org.fcitx.fcitx5.android.utils.InputMethodUtil
+import org.fcitx.fcitx5.android.utils.switchToNextIME
+import org.fcitx.fcitx5.android.utils.windowManager
 import org.mechdancer.dependency.DynamicScope
 import org.mechdancer.dependency.manager.wrapToUniqueComponent
 import org.mechdancer.dependency.plusAssign
@@ -150,6 +164,43 @@ class InputView internal constructor(
     }
 
     private val keyboardPrefs = AppPrefs.getInstance().keyboard
+    private val advancedPrefs = AppPrefs.getInstance().advanced
+    private val keyboardHeightPercentBase = advancedPrefs.keyboardHeightPercentBase
+
+    private val bottomBar by lazy {
+        ImeBottomBar(
+            themedContext, theme,
+            ThemeManager.prefs.bottomBarLeftAction.getValue(),
+            ThemeManager.prefs.bottomBarRightAction.getValue(),
+            onAction = ::performBottomBarAction,
+            onPicker = InputMethodUtil::showPicker,
+        )
+    }
+    private var systemNavigationControlsVisible = false
+    private var observedDecor: View? = null
+    private val navigationLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+        updateSystemNavigation()
+    }
+
+    private fun performBottomBarAction(action: BottomBarAction) {
+        when (action) {
+            BottomBarAction.HideKeyboard -> service.requestHideSelf(0)
+            BottomBarAction.SwitchInputMethod -> service.switchToNextIME()
+            BottomBarAction.SwitchLanguage -> service.postFcitxJob { enumerateIme() }
+            BottomBarAction.Clipboard -> windowManager.attachWindow(ClipboardWindow())
+            BottomBarAction.Symbols -> windowManager.attachWindow(PickerWindow.Key.Symbol)
+            BottomBarAction.Emoji -> windowManager.attachWindow(PickerWindow.Key.Emoji)
+            BottomBarAction.None -> Unit
+        }
+    }
+
+    private fun updateSystemNavigation() {
+        val decor = service.window.window?.decorView ?: return
+        val visible = SystemImeNavigation.controlsVisible(decor, decor.rootWindowInsets)
+        if (systemNavigationControlsVisible == visible) return
+        systemNavigationControlsVisible = visible
+        if (floatingUiReady) updateKeyboardSize()
+    }
 
     private val focusChangeResetKeyboard by keyboardPrefs.focusChangeResetKeyboard
 
@@ -168,7 +219,18 @@ class InputView internal constructor(
         keyboardSidePaddingLandscape,
         keyboardBottomPadding,
         keyboardBottomPaddingLandscape,
+        keyboardHeightPercentBase,
     )
+
+    @Suppress("DEPRECATION")
+    private fun realDisplaySize(): Point = Point().also {
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            context.display
+        } else {
+            context.windowManager.defaultDisplay
+        }
+        display.getRealSize(it)
+    }
 
     private val keyboardHeightPx: Int
         get() {
@@ -176,7 +238,11 @@ class InputView internal constructor(
                 Configuration.ORIENTATION_LANDSCAPE -> keyboardHeightPercentLandscape
                 else -> keyboardHeightPercent
             }.getValue()
-            return resources.displayMetrics.heightPixels * percent / 100
+            val base = when (keyboardHeightPercentBase.getValue()) {
+                KeyboardHeightPercentBase.DisplayMetrics -> resources.displayMetrics.heightPixels
+                KeyboardHeightPercentBase.RealSize -> realDisplaySize().y
+            }
+            return base * percent / 100
         }
 
     private val portraitKeyboardContentWidthPx: Int
@@ -191,7 +257,10 @@ class InputView internal constructor(
     private val portraitKeyboardHeightPx: Int
         get() {
             val metrics = resources.displayMetrics
-            val portraitDisplayHeight = max(metrics.widthPixels, metrics.heightPixels)
+            val portraitDisplayHeight = when (keyboardHeightPercentBase.getValue()) {
+                KeyboardHeightPercentBase.DisplayMetrics -> max(metrics.widthPixels, metrics.heightPixels)
+                KeyboardHeightPercentBase.RealSize -> realDisplaySize().let { max(it.x, it.y) }
+            }
             return (
                 portraitDisplayHeight * keyboardHeightPercent.getValue() / 100f
                 ).toInt().coerceAtLeast(1)
@@ -358,10 +427,15 @@ class InputView internal constructor(
             })
             add(windowManager.view, lParams {
                 topOfParent()
-                above(bottomPaddingSpace)
+                above(bottomBar.root)
                 /**
                  * set start and end constrain in [updateKeyboardSize]
                  */
+            })
+            add(bottomBar.root, lParams(matchConstraints, dp(ImeBottomBar.HEIGHT)) {
+                startToEndOf(leftPaddingSpace)
+                endToStartOf(rightPaddingSpace)
+                above(bottomPaddingSpace)
             })
             add(bottomPaddingSpace, lParams {
                 startToEndOf(leftPaddingSpace)
@@ -498,7 +572,42 @@ class InputView internal constructor(
             })
         }
         oneHandedBottomSpacer = view(::View)
-        keyboardPanel = constraintLayout {
+        keyboardPanel = object : ConstraintLayout(context) {
+            private val surfacePath = Path()
+            private val contentPath = Path()
+
+            override fun dispatchDraw(canvas: Canvas) {
+                val floating = isFloatingKeyboard
+                if (!floating && oneHandedMode == OneHandedMode.Off) {
+                    super.dispatchDraw(canvas)
+                    return
+                }
+                // Preedit is an overlay. Its TextViews already paint their own small
+                // backgrounds; the keyboard surface must start below that overlay.
+                val top = (keyboardContent.top + preedit.ui.root.bottom).toFloat()
+                val radius = if (floating) {
+                    min(width.toFloat(), height - top) * floatingCornerRatio()
+                } else 0f
+                surfacePath.reset()
+                surfacePath.addRoundRect(
+                    0f, top, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW
+                )
+                val backgroundSave = canvas.save()
+                canvas.clipPath(surfacePath)
+                floatingPanelBackground.setBounds(0, top.toInt(), width, height)
+                floatingPanelBackground.draw(canvas)
+                canvas.restoreToCount(backgroundSave)
+
+                // Clip the keyboard to its rounded surface without clipping away
+                // the preedit overlay above it.
+                val contentSave = canvas.save()
+                contentPath.set(surfacePath)
+                contentPath.addRect(0f, 0f, width.toFloat(), top, Path.Direction.CW)
+                canvas.clipPath(contentPath)
+                super.dispatchDraw(canvas)
+                canvas.restoreToCount(contentSave)
+            }
+        }.apply {
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
                     val radius = min(view.width, view.height) * floatingCornerRatio()
@@ -562,12 +671,16 @@ class InputView internal constructor(
         kawaiiBar.updateFloatingKeyboardButton(controller.isFloating)
 
         keyboardPrefs.registerOnChangeListener(onKeyboardSizeChangeListener)
+        advancedPrefs.registerOnChangeListener(onKeyboardSizeChangeListener)
     }
 
     private fun updateKeyboardSize() {
         val floating = isFloatingKeyboard
         val oneHanded = oneHandedMode != OneHandedMode.Off
         val layoutScale = if (oneHanded) ONE_HANDED_SCALE else 1f
+        bottomBar.root.visibility = if (ThemeManager.prefs.bottomBarMode.getValue().shouldShow(
+                systemNavigationControlsVisible, floating
+            )) VISIBLE else GONE
         val floatingHeight = if (floating) floatingController?.keyboardHeightPx else null
         windowManager.view.updateLayoutParams {
             height = floatingHeight ?: (keyboardHeightPx * layoutScale).roundToInt()
@@ -615,7 +728,7 @@ class InputView internal constructor(
                 endToStartOf(rightPaddingSpace)
             }
         }
-        val barSidePadding = if (floating) 0 else keyboardSidePaddingPx
+        val barSidePadding = sidePadding
         preedit.ui.root.setPadding(barSidePadding, 0, barSidePadding, 0)
         kawaiiBar.view.setPadding(barSidePadding, 0, barSidePadding, 0)
         oneHandedBottomSpacer.updateLayoutParams {
@@ -642,7 +755,8 @@ class InputView internal constructor(
         oneHandedControls.updateLayoutParams<LayoutParams> {
             topMargin = keyVerticalInset
             bottomMargin = if (enabled) {
-                bottomPaddingHeight + navBarBottomInset + keyVerticalInset
+                bottomPaddingHeight + navBarBottomInset + keyVerticalInset +
+                    if (bottomBar.root.visibility == VISIBLE) dp(ImeBottomBar.HEIGHT) else 0
             } else {
                 0
             }
@@ -665,6 +779,20 @@ class InputView internal constructor(
             rightOfParent()
             matchConstraintPercentWidth = if (enabled) ONE_HANDED_SCALE else 1f
             horizontalBias = if (mode == OneHandedMode.Right) 1f else 0f
+        }
+        // The toolbar and preedit must share the keyboard's physical boundaries.
+        listOf(kawaiiBar.view, preedit.ui.root).forEach { bar ->
+            bar.updateLayoutParams<LayoutParams> {
+                width = if (enabled) matchConstraints else matchParent
+                startToStart = unset
+                startToEnd = unset
+                endToStart = unset
+                endToEnd = unset
+                leftOfParent()
+                rightOfParent()
+                matchConstraintPercentWidth = if (enabled) ONE_HANDED_SCALE else 1f
+                horizontalBias = if (mode == OneHandedMode.Right) 1f else 0f
+            }
         }
         oneHandedControls.visibility = if (enabled) VISIBLE else GONE
         if (!enabled) return
@@ -692,8 +820,9 @@ class InputView internal constructor(
         keyboardWindow.setUsePortraitStyle(floating)
         windowManager.setUsePortraitKeyboardStyle(floating)
         kawaiiBar.setUsePortraitKeyboardStyle(floating)
-        keyboardPanel.background = if (floating || oneHanded) floatingPanelBackground else null
-        keyboardPanel.clipToOutline = floating
+        // The panel draws its surface below preedit in dispatchDraw.
+        keyboardPanel.background = null
+        keyboardPanel.clipToOutline = false
         keyboardPanel.invalidateOutline()
         customBackground.visibility = if (floating || oneHanded) GONE else VISIBLE
         updateKeyboardContentScale()
@@ -741,6 +870,7 @@ class InputView internal constructor(
     }
 
     override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+        updateSystemNavigation()
         navBarBottomInset = getNavBarBottomInset(insets)
         updateDetectedDisplayCornerRatio(insets)
         bottomPaddingSpace.updateLayoutParams<LayoutParams> {
@@ -869,12 +999,24 @@ class InputView internal constructor(
     }
 
     override fun onDetachedFromWindow() {
+        horizontalCandidate.cancelLoading()
+        observedDecor?.viewTreeObserver?.removeOnGlobalLayoutListener(navigationLayoutListener)
+        observedDecor = null
         floatingController?.destroy()
         floatingController = null
         keyboardPrefs.unregisterOnChangeListener(onKeyboardSizeChangeListener)
+        advancedPrefs.unregisterOnChangeListener(onKeyboardSizeChangeListener)
         // clear DynamicScope, implies that InputView should not be attached again after detached.
         scope.clear()
         super.onDetachedFromWindow()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        observedDecor = service.window.window?.decorView?.also {
+            it.viewTreeObserver.addOnGlobalLayoutListener(navigationLayoutListener)
+        }
+        updateSystemNavigation()
     }
 
     private companion object {

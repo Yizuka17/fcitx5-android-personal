@@ -369,4 +369,19 @@
     <string name="key_border_stroke">Enable stroke for key border</string>
     <string name="preferred_voice_input">Preferred voice input</string>
     <string name="edit_text_playground">EditText Playground</string>
+    <string name="keyboard_height_percent_base">Keyboard height percent base</string>
+    <string name="display_metrics">Available display area</string>
+    <string name="real_size">Physical screen size</string>
+    <string name="bottom_bar">Keyboard bottom bar</string>
+    <string name="bottom_bar_auto">Detect automatically</string>
+    <string name="bottom_bar_on">Show bottom bar</string>
+    <string name="bottom_bar_off">Hide bottom bar</string>
+    <string name="bottom_bar_left_action">Bottom bar left button</string>
+    <string name="bottom_bar_right_action">Bottom bar right button</string>
+    <string name="bottom_bar_switch_input_method">Switch input method app</string>
+    <string name="bottom_bar_switch_language">Switch language</string>
+    <string name="bottom_bar_symbols">Symbols</string>
+    <string name="bottom_bar_emoji">Emoji</string>
+    <string name="bottom_bar_no_action">None</string>
+    <string name="bottom_bar_picker_hint">Hold to choose an input method</string>
 </resources>
