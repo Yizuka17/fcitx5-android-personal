@@ -22,6 +22,7 @@ internal class SelectionActionMenu(private val context: Context, private val the
         Action(android.R.id.paste, android.R.string.paste, R.drawable.ic_baseline_content_paste_24),
         Action(android.R.id.cut, android.R.string.cut, R.drawable.ic_baseline_content_cut_24),
         Action(android.R.id.selectAll, android.R.string.selectAll, R.drawable.ic_baseline_select_all_24),
+        Action(R.id.bottom_bar_open_clipboard, R.string.clipboard, R.drawable.ic_clipboard),
     )
     private val cells = mutableListOf<PopupMenuItemView>()
     private var contentScale = 1f
@@ -46,7 +47,7 @@ internal class SelectionActionMenu(private val context: Context, private val the
     fun show(anchor: View) {
         dismiss()
         if (anchor.windowToken == null) return
-        val scale = minOf(contentScale, anchor.width / context.dp(192f))
+        val scale = minOf(contentScale, anchor.width / context.dp(48f * actions.size))
         val size = (context.dp(48f) * scale).toInt().coerceAtLeast(1)
         row.removeAllViews()
         cells.clear()

@@ -7,6 +7,7 @@
     <item name="button_emoji" type="id"/>
     <item name="button_comma" type="id"/>
     <item name="bottom_bar_cursor_area" type="id"/>
+    <item name="bottom_bar_open_clipboard" type="id"/>
     <item name="button_space" type="id"/>
     <item name="button_punctuation" type="id"/>
     <item name="button_return" type="id"/>

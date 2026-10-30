@@ -77,9 +77,10 @@ class ToolButton(context: Context) : CustomGestureView(context) {
         var requested = (dp(24f) * contentScale).roundToInt()
         if (compactSizing && availableWidth > 0 && availableHeight > 0) {
             // The old wrap-content image lost 10dp padding on every edge before scaling.
-            // Enlarge that actual narrow-cell icon by 150%, without exceeding a normal icon.
+            // Enlarge the 0.1.4 compact icon by another 50%, capped at a normal icon.
             val oldContent = min((availableWidth - dp(20)).coerceAtLeast(1), (availableHeight - dp(20)).coerceAtLeast(1))
-            requested = min(requested, (oldContent * contentScale * 1.5f).roundToInt())
+            val previousSize = min(requested, (oldContent * contentScale * 1.5f).roundToInt())
+            requested = min(requested, (previousSize * 1.5f).roundToInt())
         }
         val size = min(requested, min(availableWidth.takeIf { it > 0 } ?: requested,
             availableHeight.takeIf { it > 0 } ?: requested))

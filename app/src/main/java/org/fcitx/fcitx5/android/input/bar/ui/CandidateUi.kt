@@ -55,6 +55,8 @@ class CandidateUi(override val ctx: Context, theme: Theme, private val horizonta
     private companion object {
         const val CLEAR_BUTTON_WIDTH_DP = 28
         const val CLEAR_BUTTON_HEIGHT_DP = 28
-        const val CLEAR_ICON_SCALE = 1.75f
+        // 1.75 used to compensate for the image's old 10dp padding on both sides.
+        // With explicit image bounds, retain the original 14dp glyph and scale it normally.
+        const val CLEAR_ICON_SCALE = 14f / 24f
     }
 }

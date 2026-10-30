@@ -189,9 +189,13 @@ class InputView internal constructor(
                     }
                 }
             },
-            onEditAction = { action -> service.postFcitxJob {
-                service.currentInputConnection?.performContextMenuAction(action)
-            } },
+            onEditAction = { action ->
+                if (action == R.id.bottom_bar_open_clipboard) {
+                    performBottomBarAction(BottomBarAction.Clipboard)
+                } else service.postFcitxJob {
+                    service.currentInputConnection?.performContextMenuAction(action)
+                }
+            },
             onSelectionStart = { commonKeyActionListener.prepareTextSelection() },
         )
     }

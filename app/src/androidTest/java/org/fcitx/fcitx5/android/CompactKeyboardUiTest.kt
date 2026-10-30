@@ -23,6 +23,7 @@ import org.fcitx.fcitx5.android.data.InputFeedbacks.InputFeedbackMode
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.ThemePreset
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
+import org.fcitx.fcitx5.android.input.bar.ui.CandidateUi
 import org.fcitx.fcitx5.android.input.bar.ui.idle.ButtonsBarUi
 import org.fcitx.fcitx5.android.input.handwriting.HandwritingKeyboard
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction
@@ -68,10 +69,26 @@ class CompactKeyboardUiTest {
         toolbar.root.allViews.filterIsInstance<ImageView>().forEach {
             val cell = it.parent as View
             val oldContent = minOf(cell.width - ctx.dp(20), cell.height - ctx.dp(20)).coerceAtLeast(1)
-            val expected = minOf(referenceSize, kotlin.math.round(oldContent * .9f * 1.5f).toInt())
+            val previous = minOf(referenceSize, kotlin.math.round(oldContent * .9f * 1.5f).toInt())
+            val expected = minOf(referenceSize, (previous * 1.5f + .5f).toInt())
             assertEquals(expected, it.width)
             assertEquals(1f, it.scaleX, 0f)
             assertTrue(it.width >= ctx.dp(11))
+        }
+    }
+
+    @Test
+    fun candidateClearIconKeepsItsOriginalSizeAndFollowsScaling() = instrumentation.runOnMainSync {
+        val ctx = context
+        val candidates = CandidateUi(ctx, theme, View(ctx))
+        listOf(1f, .9f, .5f, 1f).forEach { scale ->
+            candidates.setContentScale(scale)
+            layout(candidates.root, ctx.dp(252), ctx.dp(40))
+            val clear = candidates.clearButton.allViews.filterIsInstance<ImageView>().first()
+            val expand = candidates.expandButton.allViews.filterIsInstance<ImageView>().first()
+            assertEquals(ctx.dp(14f) * scale, clear.width.toFloat(), 1f)
+            assertEquals(ctx.dp(24f) * scale, expand.width.toFloat(), 1f)
+            assertTrue("Clear must remain smaller than the expand icon", clear.width < expand.width)
         }
     }
 
