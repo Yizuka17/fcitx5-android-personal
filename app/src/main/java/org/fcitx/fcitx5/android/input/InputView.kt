@@ -18,6 +18,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.view.RoundedCorner
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
@@ -47,6 +48,7 @@ import org.fcitx.fcitx5.android.input.broadcast.ReturnKeyDrawableComponent
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateComponent
 import org.fcitx.fcitx5.android.input.handwriting.HandwritingWindow
 import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
+import org.fcitx.fcitx5.android.input.keyboard.KeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardHeightPercentBase
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.keyboard.OneHandedMode
@@ -174,6 +176,23 @@ class InputView internal constructor(
             ThemeManager.prefs.bottomBarRightAction.getValue(),
             onAction = ::performBottomBarAction,
             onPicker = InputMethodUtil::showPicker,
+            onCursorAction = {
+                commonKeyActionListener.onBottomBarCursor(it)
+            },
+            onSelectionStep = { count ->
+                service.postFcitxJob {
+                    repeat(kotlin.math.abs(count)) {
+                        service.sendCombinationKeyEvents(
+                            if (count > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT,
+                            shift = true,
+                        )
+                    }
+                }
+            },
+            onEditAction = { action -> service.postFcitxJob {
+                service.currentInputConnection?.performContextMenuAction(action)
+            } },
+            onSelectionStart = { commonKeyActionListener.prepareTextSelection() },
         )
     }
     private var systemNavigationControlsVisible = false
@@ -463,33 +482,12 @@ class InputView internal constructor(
             })
         }
 
-        floatingDragHandle = imageView {
-            setImageResource(R.drawable.ic_baseline_drag_handle_24)
-            imageTintList = ColorStateList.valueOf(theme.keyTextColor)
-            contentDescription = context.getString(R.string.floating_keyboard_drag)
-            isClickable = true
-            setPadding(dp(16), dp(4), dp(16), dp(4))
+        val outerControls = FloatingKeyboardControls(context, theme) {
+            min(keyboardContent.measuredWidth, keyboardView.measuredHeight) * floatingCornerRatio()
         }
-        floatingResizeHandle = imageView {
-            setImageResource(R.drawable.ic_resize_bottom_right)
-            imageTintList = ColorStateList.valueOf(theme.keyTextColor)
-            contentDescription = context.getString(R.string.floating_keyboard_resize)
-            isClickable = true
-            setPadding(dp(12), dp(4), dp(8), dp(4))
-        }
-        floatingControls = constraintLayout {
-            visibility = GONE
-            add(floatingDragHandle, lParams(dp(72), matchParent) {
-                centerHorizontally()
-                topOfParent()
-                bottomOfParent()
-            })
-            add(floatingResizeHandle, lParams(dp(48), matchParent) {
-                rightOfParent()
-                topOfParent()
-                bottomOfParent()
-            })
-        }
+        floatingControls = outerControls.apply { visibility = GONE }
+        floatingDragHandle = outerControls.dragHandle
+        floatingResizeHandle = outerControls.resizeHandle
         oneHandedRestoreButton = createOneHandedControlButton(
             R.drawable.ic_material_zoom_out_map_24,
             R.string.one_handed_keyboard_restore
@@ -585,47 +583,60 @@ class InputView internal constructor(
                 // Preedit is an overlay. Its TextViews already paint their own small
                 // backgrounds; the keyboard surface must start below that overlay.
                 val top = (keyboardContent.top + preedit.ui.root.bottom).toFloat()
+                val surfaceRight = (if (floating) keyboardContent.right else width).toFloat()
+                val surfaceBottom = (if (floating) keyboardContent.bottom else height).toFloat()
                 val radius = if (floating) {
-                    min(width.toFloat(), height - top) * floatingCornerRatio()
+                    min(surfaceRight, surfaceBottom - top) * floatingCornerRatio()
                 } else 0f
                 surfacePath.reset()
                 surfacePath.addRoundRect(
-                    0f, top, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW
+                    0f, top, surfaceRight, surfaceBottom, radius, radius, Path.Direction.CW
                 )
                 val backgroundSave = canvas.save()
                 canvas.clipPath(surfacePath)
-                floatingPanelBackground.setBounds(0, top.toInt(), width, height)
+                floatingPanelBackground.setBounds(0, top.toInt(), surfaceRight.toInt(), surfaceBottom.toInt())
                 floatingPanelBackground.draw(canvas)
                 canvas.restoreToCount(backgroundSave)
 
                 // Clip the keyboard to its rounded surface without clipping away
                 // the preedit overlay above it.
-                val contentSave = canvas.save()
                 contentPath.set(surfacePath)
-                contentPath.addRect(0f, 0f, width.toFloat(), top, Path.Direction.CW)
-                canvas.clipPath(contentPath)
+                contentPath.addRect(0f, 0f, surfaceRight, top, Path.Direction.CW)
                 super.dispatchDraw(canvas)
-                canvas.restoreToCount(contentSave)
+            }
+
+            override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
+                if (child !== keyboardContent || (!isFloatingKeyboard && oneHandedMode == OneHandedMode.Off)) {
+                    return super.drawChild(canvas, child, drawingTime)
+                }
+                val save = canvas.save()
+                canvas.clipPath(contentPath)
+                val drawn = super.drawChild(canvas, child, drawingTime)
+                canvas.restoreToCount(save)
+                return drawn
             }
         }.apply {
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
-                    val radius = min(view.width, view.height) * floatingCornerRatio()
-                    outline.setRoundRect(0, 0, view.width, view.height, radius)
+                    val top = preedit.ui.root.bottom
+                    val radius = min(keyboardContent.width, keyboardContent.height - top) * floatingCornerRatio()
+                    outline.setRoundRect(0, top, keyboardContent.right, keyboardContent.bottom, radius)
                 }
             }
             add(keyboardContent, lParams(matchParent, wrapContent) {
                 topOfParent()
                 centerHorizontally()
             })
-            add(floatingControls, lParams(matchParent, dp(FLOATING_CONTROLS_HEIGHT)) {
-                below(keyboardContent)
-                centerHorizontally()
-            })
             add(oneHandedBottomSpacer, lParams(matchParent, 0) {
-                below(floatingControls)
+                below(keyboardContent)
                 bottomOfParent()
                 centerHorizontally()
+            })
+            add(floatingControls, lParams(matchConstraints, matchConstraints) {
+                leftOfParent()
+                rightOfParent()
+                topOfParent()
+                bottomOfParent()
             })
         }
         preedit.ui.root.addOnLayoutChangeListener {
@@ -637,6 +648,7 @@ class InputView internal constructor(
         }
         keyboardPanel.addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
             view.invalidateOutline()
+            floatingControls.requestLayout()
         }
         add(keyboardPanel, lParams(matchParent, wrapContent) {
             leftOfParent()
@@ -678,6 +690,14 @@ class InputView internal constructor(
         val floating = isFloatingKeyboard
         val oneHanded = oneHandedMode != OneHandedMode.Off
         val layoutScale = if (oneHanded) ONE_HANDED_SCALE else 1f
+        keyboardContent.updateLayoutParams<LayoutParams> {
+            width = if (floating) matchConstraints else matchParent
+            startToStart = unset
+            endToEnd = unset
+            leftOfParent()
+            rightOfParent()
+            rightMargin = if (floating) dp(FloatingKeyboardControls.GUTTER_DP) else 0
+        }
         bottomBar.root.visibility = if (ThemeManager.prefs.bottomBarMode.getValue().shouldShow(
                 systemNavigationControlsVisible, floating
             )) VISIBLE else GONE
@@ -736,6 +756,8 @@ class InputView internal constructor(
                 val normalHeight = keyboardHeightPx + keyboardBottomPaddingPx
                 val scaledHeight = (normalHeight * ONE_HANDED_SCALE).roundToInt()
                 (normalHeight - scaledHeight).coerceAtLeast(0)
+            } else if (floating) {
+                dp(FloatingKeyboardControls.GUTTER_DP)
             } else {
                 0
             }
@@ -756,7 +778,7 @@ class InputView internal constructor(
             topMargin = keyVerticalInset
             bottomMargin = if (enabled) {
                 bottomPaddingHeight + navBarBottomInset + keyVerticalInset +
-                    if (bottomBar.root.visibility == VISIBLE) dp(ImeBottomBar.HEIGHT) else 0
+                    if (bottomBar.root.visibility == VISIBLE) bottomBar.heightPx else 0
             } else {
                 0
             }
@@ -830,6 +852,7 @@ class InputView internal constructor(
 
     private fun updateKeyboardContentScale() {
         if (oneHandedMode != OneHandedMode.Off) {
+            bottomBar.setContentScale(ONE_HANDED_SCALE)
             keyboardWindow.setContentScale(ONE_HANDED_SCALE)
             windowManager.setContentScale(ONE_HANDED_SCALE)
             kawaiiBar.setContentScale(1f, 1f)
@@ -838,6 +861,7 @@ class InputView internal constructor(
             return
         }
         if (!isFloatingKeyboard) {
+            bottomBar.setContentScale(1f)
             keyboardWindow.setContentScale(1f)
             windowManager.setContentScale(1f)
             kawaiiBar.setContentScale(1f, 1f)
@@ -852,10 +876,11 @@ class InputView internal constructor(
         val baseKeyboardHeight = portraitKeyboardHeightPx
         val currentKeyboardHeight =
             (floatingController?.keyboardHeightPx ?: baseKeyboardHeight).coerceAtLeast(1)
-        val widthScale = panelWidth.toFloat() / availableWidth
+        val widthScale = (panelWidth - dp(FloatingKeyboardControls.GUTTER_DP)).toFloat() / availableWidth
         val heightScale = currentKeyboardHeight.toFloat() / baseKeyboardHeight
         val contentScale = min(widthScale, heightScale).coerceIn(MIN_KEY_CONTENT_SCALE, 1f)
         val toolbarScale = widthScale.coerceIn(MIN_TOOLBAR_CONTENT_SCALE, 1f)
+        bottomBar.setContentScale(contentScale.coerceAtLeast(.65f))
         val barTextScale = MIN_BAR_TEXT_SCALE +
             (1f - MIN_BAR_TEXT_SCALE) * widthScale.coerceIn(0f, 1f)
         keyboardWindow.setContentScale(
@@ -933,6 +958,7 @@ class InputView internal constructor(
      * called when [InputView] is about to show, or restart
      */
     fun startInput(info: EditorInfo, capFlags: CapabilityFlags, restarting: Boolean = false) {
+        cancelBottomBarGesture()
         broadcaster.onStartInput(info, capFlags)
         returnKeyDrawable.updateDrawableOnEditorInfo(info)
         if (focusChangeResetKeyboard || !restarting) {
@@ -993,6 +1019,8 @@ class InputView internal constructor(
         broadcaster.onSelectionUpdate(start, end)
     }
 
+    fun cancelBottomBarGesture() = bottomBar.cancelGestures()
+
     @RequiresApi(Build.VERSION_CODES.R)
     fun handleInlineSuggestions(response: InlineSuggestionsResponse): Boolean {
         return kawaiiBar.handleInlineSuggestions(response)
@@ -1020,7 +1048,6 @@ class InputView internal constructor(
     }
 
     private companion object {
-        const val FLOATING_CONTROLS_HEIGHT = 32
         const val ONE_HANDED_SCALE = 0.85f
         const val ONE_HANDED_CONTROL_SIZE_RATIO = 0.63f
         const val ONE_HANDED_CONTROL_ICON_PADDING_RATIO = 8f / 39f

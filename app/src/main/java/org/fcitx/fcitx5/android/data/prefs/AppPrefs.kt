@@ -197,8 +197,20 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         )
         val spaceSwipeMoveCursor =
             switch(R.string.space_swipe_move_cursor, "space_swipe_move_cursor", true)
+        val bottomBarSwipeMoveCursor =
+            switch(R.string.bottom_bar_swipe_move_cursor, "bottom_bar_swipe_move_cursor", true)
+        val separatePreeditCursor = switch(
+            R.string.separate_preedit_cursor, "separate_preedit_cursor", false,
+            R.string.separate_preedit_cursor_summary,
+        ) { bottomBarSwipeMoveCursor.getValue() }
         val showLangSwitchKey =
             switch(R.string.show_lang_switch_key, "show_lang_switch_key", true)
+        val showEmojiKey = switch(
+            R.string.show_emoji_key,
+            "show_emoji_key",
+            false,
+            R.string.show_emoji_key_summary,
+        ) { !showLangSwitchKey.getValue() }
         val langSwitchKeyBehavior = enumList(
             R.string.lang_switch_key_behavior,
             "lang_switch_key_behavior",

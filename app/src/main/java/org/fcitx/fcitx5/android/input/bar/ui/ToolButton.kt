@@ -6,8 +6,10 @@ package org.fcitx.fcitx5.android.input.bar.ui
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.view.View
 import android.view.ViewPropertyAnimator
 import android.widget.ImageView
+import androidx.core.view.updateLayoutParams
 import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
@@ -23,7 +25,8 @@ import splitties.views.dsl.core.lParams
 import splitties.views.dsl.core.wrapContent
 import splitties.views.gravityCenter
 import splitties.views.imageResource
-import splitties.views.padding
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 class ToolButton(context: Context) : CustomGestureView(context) {
 
@@ -34,9 +37,10 @@ class ToolButton(context: Context) : CustomGestureView(context) {
     private val image = imageView {
         isClickable = false
         isFocusable = false
-        padding = dp(10)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
     }
+    private var contentScale = 1f
+    private var compactSizing = false
 
     var iconRotation: Float
         get() = image.rotation
@@ -48,7 +52,7 @@ class ToolButton(context: Context) : CustomGestureView(context) {
         image.imageTintList = ColorStateList.valueOf(theme.altKeyTextColor)
         setIcon(icon)
         setPressHighlightColor(theme.keyPressHighlightColor)
-        add(image, lParams(wrapContent, wrapContent, gravityCenter))
+        add(image, lParams(dp(24), dp(24), gravityCenter))
     }
 
     fun iconAnimate(): ViewPropertyAnimator = image.animate()
@@ -58,8 +62,42 @@ class ToolButton(context: Context) : CustomGestureView(context) {
     }
 
     fun setContentScale(scale: Float) {
-        image.scaleX = scale
-        image.scaleY = scale
+        compactSizing = false
+        contentScale = scale
+        updateIconSize()
+    }
+
+    fun setCompactContentScale(scale: Float) {
+        compactSizing = true
+        contentScale = scale
+        updateIconSize()
+    }
+
+    private fun updateIconSize(availableWidth: Int = width, availableHeight: Int = height) {
+        var requested = (dp(24f) * contentScale).roundToInt()
+        if (compactSizing && availableWidth > 0 && availableHeight > 0) {
+            // The old wrap-content image lost 10dp padding on every edge before scaling.
+            // Enlarge that actual narrow-cell icon by 150%, without exceeding a normal icon.
+            val oldContent = min((availableWidth - dp(20)).coerceAtLeast(1), (availableHeight - dp(20)).coerceAtLeast(1))
+            requested = min(requested, (oldContent * contentScale * 1.5f).roundToInt())
+        }
+        val size = min(requested, min(availableWidth.takeIf { it > 0 } ?: requested,
+            availableHeight.takeIf { it > 0 } ?: requested))
+        if (image.layoutParams != null && (image.layoutParams.width != size || image.layoutParams.height != size)) {
+            image.updateLayoutParams { width = size; height = size }
+        }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // Flexbox can measure a button again after shrinking its cell. Size its image
+        // before that pass so the child is measured with the final available space.
+        updateIconSize(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec))
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateIconSize()
     }
 
     fun setPressHighlightColor(@ColorInt color: Int) {

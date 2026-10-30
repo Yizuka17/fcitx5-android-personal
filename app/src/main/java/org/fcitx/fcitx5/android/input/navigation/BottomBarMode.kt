@@ -13,7 +13,7 @@ enum class BottomBarMode(override val stringRes: Int) : ManagedPreferenceEnum {
     Off(R.string.bottom_bar_off);
 
     fun shouldShow(systemControlsVisible: Boolean, floating: Boolean): Boolean =
-        !floating && when (this) {
+        floating || when (this) {
             Auto -> !systemControlsVisible
             On -> true
             Off -> false

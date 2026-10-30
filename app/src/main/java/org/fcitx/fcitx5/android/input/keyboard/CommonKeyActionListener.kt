@@ -5,10 +5,13 @@
 
 package org.fcitx.fcitx5.android.input.keyboard
 
+import android.view.KeyEvent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.core.FcitxAPI
+import org.fcitx.fcitx5.android.core.FcitxKeyMapping
+import org.fcitx.fcitx5.android.core.KeyStates
 import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.broadcast.PreeditEmptyStateComponent
@@ -82,6 +85,30 @@ class CommonKeyActionListener :
         reset()
     }
 
+    private fun FcitxAPI.hasPendingChinesePreedit() =
+        inputMethodEntryCached.languageCode.startsWith("zh") &&
+            (clientPreeditCached.isNotEmpty() || inputPanelCached.preedit.isNotEmpty())
+
+    /** Keep unchosen Pinyin pending rather than selecting its first candidate as a side effect. */
+    fun prepareTextSelection() = service.postFcitxJob {
+        if (hasPendingChinesePreedit()) service.detachPendingPreeditForTextCursor() else commitAndReset()
+    }
+
+    fun onBottomBarCursor(action: KeyAction) {
+        if (!kbdPrefs.separatePreeditCursor.getValue() || !kbdPrefs.bottomBarSwipeMoveCursor.getValue()) {
+            listener.onKeyAction(action, KeyActionListener.Source.Keyboard)
+        } else if (action is SymAction) {
+            service.postFcitxJob {
+                if (hasPendingChinesePreedit()) service.detachPendingPreeditForTextCursor()
+                else if (!isEmpty()) commitAndReset()
+                service.sendCombinationKeyEvents(
+                    if (action.sym.sym == FcitxKeyMapping.FcitxKey_Left) KeyEvent.KEYCODE_DPAD_LEFT
+                    else KeyEvent.KEYCODE_DPAD_RIGHT
+                )
+            }
+        }
+    }
+
     private fun showInputMethodPicker() {
         fcitx.launchOnReady {
             service.lifecycleScope.launch {
@@ -93,6 +120,9 @@ class CommonKeyActionListener :
     val listener by lazy {
         KeyActionListener { action, _ ->
             when (action) {
+                is KeyAction.PreeditCursorAction -> service.postFcitxJob {
+                    if (hasPendingChinesePreedit()) sendKey(action.sym, KeyStates.Virtual)
+                }
                 is FcitxKeyAction -> service.postFcitxJob {
                     sendKey(action.act, action.states.states, action.code)
                 }

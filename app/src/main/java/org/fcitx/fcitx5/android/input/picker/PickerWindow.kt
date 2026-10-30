@@ -13,12 +13,14 @@ import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.broadcast.ReturnKeyDrawableComponent
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.dependency.fcitx
 import org.fcitx.fcitx5.android.input.handwriting.HandwritingWindow
 import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
+import org.fcitx.fcitx5.android.input.keyboard.TextKeyboard
 import org.fcitx.fcitx5.android.input.popup.PopupAction
 import org.fcitx.fcitx5.android.input.popup.PopupActionListener
 import org.fcitx.fcitx5.android.input.popup.PopupComponent
@@ -39,10 +41,6 @@ class PickerWindow(
 ) : InputWindow.ExtendedInputWindow<PickerWindow>(), EssentialWindow, InputBroadcastReceiver,
     ScalableInputWindow {
 
-    private companion object {
-        var returnToHandwriting = false
-    }
-
     enum class Key : EssentialWindow.Key {
         Symbol,
         Emoji,
@@ -50,6 +48,7 @@ class PickerWindow(
     }
 
     private val theme by manager.theme()
+    private val fcitx by manager.fcitx()
     private val windowManager: InputWindowManager by manager.must()
     private val commonKeyActionListener: CommonKeyActionListener by manager.must()
     private val popup: PopupComponent by manager.must()
@@ -67,7 +66,9 @@ class PickerWindow(
     private val keyActionListener = KeyActionListener { it, source ->
         when (it) {
             is KeyAction.LayoutSwitchAction -> {
-                if (returnToHandwriting) {
+                if (it.act == TextKeyboard.Name &&
+                    HandwritingWindow.isHandwritingInputMethod(fcitx.runImmediately { inputMethodEntryCached })
+                ) {
                     ContextCompat.getMainExecutor(context).execute {
                         windowManager.attachWindow(HandwritingWindow)
                     }
@@ -185,14 +186,6 @@ class PickerWindow(
     override fun onDetached() {
         popup.dismissAll()
         pickerLayout.embeddedKeyboard.keyActionListener = null
-    }
-
-    override fun onWindowDetached(window: InputWindow) {
-        when (window) {
-            is HandwritingWindow -> returnToHandwriting = true
-            is KeyboardWindow -> returnToHandwriting = false
-            else -> Unit
-        }
     }
 
     override val showTitle = false

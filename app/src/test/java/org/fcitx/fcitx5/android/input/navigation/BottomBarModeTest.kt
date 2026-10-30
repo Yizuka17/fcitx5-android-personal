@@ -22,9 +22,10 @@ class BottomBarModeTest {
     }
 
     @Test
-    fun floatingKeyboardDoesNotReserveBottomNavigationSpace() {
+    fun floatingKeyboardAlwaysIncludesItsOwnBottomBar() {
         BottomBarMode.entries.forEach {
-            assertFalse(it.shouldShow(systemControlsVisible = false, floating = true))
+            assertTrue(it.shouldShow(systemControlsVisible = false, floating = true))
+            assertTrue(it.shouldShow(systemControlsVisible = true, floating = true))
         }
     }
 }

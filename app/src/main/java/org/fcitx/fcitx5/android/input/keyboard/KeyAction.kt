@@ -18,6 +18,7 @@ sealed class KeyAction {
     ) : KeyAction()
 
     data class SymAction(val sym: KeySym, val states: KeyStates = KeyStates.Virtual) : KeyAction()
+    data class PreeditCursorAction(val sym: KeySym) : KeyAction()
 
     data class CommitAction(val text: String) : KeyAction()
 

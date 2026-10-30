@@ -6,20 +6,13 @@ package org.fcitx.fcitx5.android.input.popup
 
 import android.content.Context
 import android.graphics.Rect
-import android.graphics.drawable.InsetDrawable
-import android.graphics.drawable.ShapeDrawable
-import android.graphics.drawable.shapes.OvalShape
-import android.widget.ImageView
-import androidx.core.graphics.ColorUtils
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef
+import org.fcitx.fcitx5.android.input.keyboard.KeyAction
 import splitties.dimensions.dp
-import splitties.resources.drawable
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.horizontalLayout
-import splitties.views.dsl.core.imageView
 import splitties.views.dsl.core.lParams
-import splitties.views.imageDrawable
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -35,23 +28,6 @@ class PopupMenuUi(
 
     private val keySize = (ctx.dp(48) * contentScale).roundToInt()
 
-    private val inactiveBackground = InsetDrawable(
-        ShapeDrawable(OvalShape()).apply {
-            paint.color = theme.accentKeyBackgroundColor
-        },
-        (keySize - (ctx.dp(33) * contentScale).roundToInt()) / 2
-    )
-
-    private val activeBackground = InsetDrawable(
-        ShapeDrawable(OvalShape()).apply {
-            paint.color = ColorUtils.compositeColors(
-                theme.keyPressHighlightColor,
-                theme.accentKeyBackgroundColor
-            )
-        },
-        (keySize - (ctx.dp(34) * contentScale).roundToInt()) / 2
-    )
-
     private val columnCount = items.size
     private val focusColumn =
         calcInitialFocusedColumn(columnCount, keySize, outerBounds, triggerBounds)
@@ -61,18 +37,11 @@ class PopupMenuUi(
 
     private val columnOrder = createColumnOrder(columnCount, focusColumn)
 
-    private var focusedIndex = columnOrder[focusColumn]
+    private val requiresUpwardSelection = items.all { it.action is KeyAction.OneHandedModeAction }
+    private var focusedIndex = if (requiresUpwardSelection) -1 else columnOrder[focusColumn]
 
     private val keyViews = items.map {
-        imageView {
-            background = inactiveBackground
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            imageDrawable = drawable(it.icon)!!.apply {
-                setTint(theme.accentKeyTextColor)
-            }
-            scaleX = contentScale
-            scaleY = contentScale
-        }
+        PopupMenuItemView(ctx, theme, it.icon, contentScale)
     }
 
     init {
@@ -88,17 +57,28 @@ class PopupMenuUi(
 
     private fun markFocus(index: Int) {
         keyViews.getOrNull(index)?.apply {
-            background = activeBackground
+            isActivated = true
         }
     }
 
     private fun markInactive(index: Int) {
         keyViews.getOrNull(index)?.apply {
-            background = inactiveBackground
+            isActivated = false
         }
     }
 
     override fun onChangeFocus(x: Float, y: Float): Boolean {
+        if (requiresUpwardSelection) {
+            // A long press only opens the shortcut. Enter the icon above the key to select it;
+            // returning to the key or moving below it cancels the selection again.
+            val index = if (x >= 0 && x < keySize * columnCount && y >= 0 && y < keySize) {
+                columnOrder[floor(x / keySize).toInt()]
+            } else -1
+            markInactive(focusedIndex)
+            focusedIndex = index
+            markFocus(index)
+            return false
+        }
         var newColumn = floor(x / keySize).toInt()
         if (newColumn < -2 || newColumn > columnCount + 1) {
             onDismissSelf(this)

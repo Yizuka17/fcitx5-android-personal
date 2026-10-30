@@ -32,11 +32,9 @@ class PopupEntryUi(
     var lastShowTime = -1L
 
     val textView = view(::AutoScaleTextView) {
-        textSize = 23f
+        textSize = 23f * contentScale
         gravity = gravityCenter
         setTextColor(theme.popupTextColor)
-        scaleX = contentScale
-        scaleY = contentScale
     }
 
     override val root = constraintLayout {

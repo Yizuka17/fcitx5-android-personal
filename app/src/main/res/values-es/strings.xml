@@ -275,6 +275,9 @@
     <string name="space_behavior_activate">Alternar método de entrada activar estado</string>
     <string name="space_behavior_picker">Mostrar cuadro de diálogo del selector de método de entrada</string>
     <string name="show_lang_switch_key">Mostrar tecla de cambio de idioma</string>
+    <string name="show_emoji_key">Mostrar tecla de emojis</string>
+    <string name="bottom_bar_swipe_move_cursor">Deslizar la barra inferior para mover el cursor</string>
+    <string name="show_emoji_key_summary">Sustituye la tecla de idioma oculta por una de emojis. Mantén pulsada la coma para abrir símbolos; ?123 abre el teclado numérico.</string>
     <string name="horizontal_candidate_style">Estilo candidato horizontal</string>
     <string name="horizontal_candidate_never_fill">Nunca llenes el ancho</string>
     <string name="horizontal_candidate_auto_fill">Ancho de relleno bajo demanda</string>
@@ -384,4 +387,6 @@
     <string name="bottom_bar_emoji">Emojis</string>
     <string name="bottom_bar_no_action">Ninguno</string>
     <string name="bottom_bar_picker_hint">Mantén pulsado para elegir un método de entrada</string>
+    <string name="separate_preedit_cursor">Separar los cursores de pinyin y texto (experimental)</string>
+    <string name="separate_preedit_cursor_summary">Deslizar el espacio solo edita el pinyin pendiente. La barra inferior mueve el cursor del texto y conserva el pinyin pendiente.</string>
 </resources>

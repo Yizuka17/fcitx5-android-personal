@@ -6,15 +6,12 @@ package org.fcitx.fcitx5.android.input.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.view.View
-import androidx.annotation.Keep
 import androidx.core.view.allViews
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.core.KeyState
 import org.fcitx.fcitx5.android.core.KeyStates
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
-import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.popup.PopupAction
 import splitties.views.imageResource
@@ -23,35 +20,14 @@ import splitties.views.imageResource
 class TextKeyboard(
     context: Context,
     theme: Theme
-) : BaseKeyboard(context, theme, Layout) {
+) : BottomRowKeyboard(context, theme, Layout) {
 
     enum class CapsState { None, Once, Lock }
 
     companion object {
         const val Name = "Text"
 
-        val BottomRow: List<KeyDef> = listOf(
-            LayoutSwitchKey(
-                "?123",
-                "",
-                popup = arrayOf(
-                    KeyDef.Popup.Menu(
-                        arrayOf(
-                            KeyDef.Popup.Menu.Item(
-                                "Left-handed mode",
-                                R.drawable.ic_material_mobile_hand_left_24,
-                                KeyAction.OneHandedModeAction(OneHandedMode.Left)
-                            )
-                        )
-                    )
-                )
-            ),
-            CommaKey(0.1f, KeyDef.Appearance.Variant.Alternative),
-            LanguageKey(),
-            SpaceKey(),
-            SymbolKey(".", 0.1f, KeyDef.Appearance.Variant.Alternative),
-            ReturnKey()
-        )
+        val BottomRow = BottomRowKeyboard.BottomRow
 
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
@@ -95,23 +71,10 @@ class TextKeyboard(
     val caps: ImageKeyView by lazy { findViewById(R.id.button_caps) }
     val backspace: ImageKeyView by lazy { findViewById(R.id.button_backspace) }
     val quickphrase: ImageKeyView by lazy { findViewById(R.id.button_quickphrase) }
-    val lang: ImageKeyView by lazy { findViewById(R.id.button_lang) }
     val space: TextKeyView by lazy { findViewById(R.id.button_space) }
     val `return`: ImageKeyView by lazy { findViewById(R.id.button_return) }
 
-    private val showLangSwitchKey = AppPrefs.getInstance().keyboard.showLangSwitchKey
-
-    @Keep
-    private val showLangSwitchKeyListener = ManagedPreference.OnChangeListener<Boolean> { _, v ->
-        updateLangSwitchKey(v)
-    }
-
     private val keepLettersUppercase by AppPrefs.getInstance().keyboard.keepLettersUppercase
-
-    init {
-        updateLangSwitchKey(showLangSwitchKey.getValue())
-        showLangSwitchKey.registerOnChangeListener(showLangSwitchKeyListener)
-    }
 
     private val textKeys: List<TextKeyView> by lazy {
         allViews.filterIsInstance(TextKeyView::class.java).toList()
@@ -243,10 +206,6 @@ class TextKeyboard(
                 CapsState.Lock -> R.drawable.ic_capslock_lock
             }
         }
-    }
-
-    private fun updateLangSwitchKey(visible: Boolean) {
-        lang.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
     private fun updateAlphabetKeys() {

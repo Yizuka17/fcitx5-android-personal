@@ -9,14 +9,11 @@ import android.content.Context
 import androidx.core.view.allViews
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.theme.Theme
-import org.fcitx.fcitx5.android.input.keyboard.BaseKeyboard
+import org.fcitx.fcitx5.android.input.keyboard.BottomRowKeyboard
 import org.fcitx.fcitx5.android.input.keyboard.ImageKeyView
-import org.fcitx.fcitx5.android.input.keyboard.KeyAction
-import org.fcitx.fcitx5.android.input.keyboard.KeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef
 import org.fcitx.fcitx5.android.input.keyboard.TextKeyView
 import org.fcitx.fcitx5.android.input.keyboard.TextKeyboard
-import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import splitties.views.imageResource
 
 /**
@@ -27,7 +24,7 @@ import splitties.views.imageResource
 class HandwritingKeyboard(
     context: Context,
     theme: Theme,
-) : BaseKeyboard(context, theme, Layout) {
+) : BottomRowKeyboard(context, theme, Layout) {
 
     companion object {
         const val RETURN_KEY_WIDTH_FRACTION = 0.15f
@@ -52,16 +49,6 @@ class HandwritingKeyboard(
 
     override fun onReturnDrawableUpdate(returnDrawable: Int) {
         returnKey.img.imageResource = returnDrawable
-    }
-
-    protected override fun onAction(action: KeyAction, source: KeyActionListener.Source) {
-        val transformed =
-            if (action is KeyAction.LayoutSwitchAction) {
-                KeyAction.PickerSwitchAction(PickerWindow.Key.Symbol)
-            } else {
-                action
-            }
-        super.onAction(transformed, source)
     }
 
     override fun onPunctuationUpdate(mapping: Map<String, String>) {

@@ -12,10 +12,7 @@ import androidx.annotation.DrawableRes
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.children
 import androidx.core.view.updateLayoutParams
-import org.fcitx.fcitx5.android.core.FcitxKeyMapping
 import org.fcitx.fcitx5.android.core.InputMethodEntry
-import org.fcitx.fcitx5.android.core.KeyStates
-import org.fcitx.fcitx5.android.core.KeySym
 import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
@@ -38,7 +35,6 @@ import splitties.views.dsl.constraintlayout.rightOfParent
 import splitties.views.dsl.constraintlayout.rightToLeftOf
 import splitties.views.dsl.constraintlayout.topOfParent
 import splitties.views.dsl.core.add
-import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 abstract class BaseKeyboard(
@@ -174,27 +170,7 @@ abstract class BaseKeyboard(
             if (def is SpaceKey) {
                 spaceKeys.add(this)
                 swipeEnabled = spaceSwipeMoveCursor.getValue()
-                swipeRepeatEnabled = true
-                swipeThresholdX = selectionSwipeThreshold
-                swipeThresholdY = disabledSwipeThreshold
-                onGestureListener = OnGestureListener { view, event ->
-                    when (event.type) {
-                        GestureType.Move -> when (val count = event.countX) {
-                            0 -> false
-                            else -> {
-                                val sym =
-                                    if (count > 0) FcitxKeyMapping.FcitxKey_Right else FcitxKeyMapping.FcitxKey_Left
-                                val action = KeyAction.SymAction(KeySym(sym), KeyStates.Virtual)
-                                repeat(count.absoluteValue) {
-                                    onAction(action)
-                                    if (hapticOnRepeat) InputFeedbacks.hapticFeedback(view)
-                                }
-                                true
-                            }
-                        }
-                        else -> false
-                    }
-                }
+                configureCursorSwipe { onAction(it) }
             } else if (def is BackspaceKey) {
                 swipeEnabled = true
                 swipeRepeatEnabled = true
@@ -269,9 +245,11 @@ abstract class BaseKeyboard(
                 when (it) {
                     // TODO: gesture processing middleware
                     is KeyDef.Popup.Menu -> {
+                        var menuOpened = false
                         setOnLongClickListener { view ->
                             view as KeyView
                             onPopupAction(PopupAction.ShowMenuAction(view.id, it, view.currentBounds))
+                            menuOpened = true
                             // do not consume this LongClick gesture
                             false
                         }
@@ -280,11 +258,18 @@ abstract class BaseKeyboard(
                         onGestureListener = OnGestureListener { view, event ->
                             view as KeyView
                             when (event.type) {
+                                GestureType.Down -> { menuOpened = false; false }
                                 GestureType.Move -> {
-                                    onPopupChangeFocus(view.id, event.x, event.y)
+                                    menuOpened && onPopupChangeFocus(view.id, event.x, event.y)
                                 }
                                 GestureType.Up -> {
-                                    onPopupTrigger(view.id)
+                                    if (menuOpened) {
+                                        menuOpened = false
+                                        onPopupChangeFocus(view.id, event.x, event.y)
+                                        onPopupTrigger(view.id)
+                                        // A cancelled long-press menu must not fall through to a key click.
+                                        true
+                                    } else false
                                 }
                                 else -> false
                             } || oldOnGestureListener.onGesture(view, event)
@@ -508,10 +493,10 @@ abstract class BaseKeyboard(
         val triggerAction = PopupAction.TriggerAction(viewId)
         // ask popup keyboard whether there's a pending KeyAction
         onPopupAction(triggerAction)
-        val action = triggerAction.outAction ?: return false
-        onAction(action, KeyActionListener.Source.Popup)
+        val action = triggerAction.outAction
         onPopupAction(PopupAction.DismissAction(viewId))
-        return true
+        if (action != null) onAction(action, KeyActionListener.Source.Popup)
+        return action != null
     }
 
     open fun onAttach() {

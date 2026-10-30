@@ -32,11 +32,15 @@ import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateC
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
 import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
+import org.fcitx.fcitx5.android.input.keyboard.KeyAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyActionListener
+import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.keyboard.TextKeyboard
+import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import org.fcitx.fcitx5.android.input.popup.PopupComponent
 import org.fcitx.fcitx5.android.input.wm.EssentialWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
+import org.fcitx.fcitx5.android.input.wm.InputWindowManager
 import org.fcitx.fcitx5.android.input.wm.ScalableInputWindow
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
@@ -70,6 +74,7 @@ class HandwritingWindow :
     private val commonKeyActionListener: CommonKeyActionListener by manager.must()
     private val returnKeyDrawable: ReturnKeyDrawableComponent by manager.must()
     private val popup: PopupComponent by manager.must()
+    private val windowManager: InputWindowManager by manager.must()
     private val requestIds = AtomicLong()
     private val modePreference = AppPrefs.getInstance().handwriting.recognitionMode
 
@@ -96,7 +101,21 @@ class HandwritingWindow :
         }
 
     private val keyActionListener = KeyActionListener { action, source ->
-        commonKeyActionListener.listener.onKeyAction(action, source)
+        if (action is KeyAction.LayoutSwitchAction) {
+            if (action.act.isEmpty()) {
+                commonKeyActionListener.listener.onKeyAction(
+                    KeyAction.PickerSwitchAction(PickerWindow.Key.Symbol), source
+                )
+            } else {
+                (windowManager.getEssentialWindow(KeyboardWindow) as KeyboardWindow)
+                    .switchLayout(action.act)
+                ContextCompat.getMainExecutor(service).execute {
+                    windowManager.attachWindow(KeyboardWindow)
+                }
+            }
+        } else {
+            commonKeyActionListener.listener.onKeyAction(action, source)
+        }
     }
     private val providerChangeListener = {
         ContextCompat.getMainExecutor(service).execute {

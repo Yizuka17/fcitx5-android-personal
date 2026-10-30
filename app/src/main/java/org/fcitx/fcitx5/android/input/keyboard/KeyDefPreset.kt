@@ -165,7 +165,8 @@ class CommaKey(
         textSize = 23f,
         percentWidth = percentWidth,
         variant = variant,
-        src = R.drawable.ic_baseline_tag_faces_24
+        src = R.drawable.ic_baseline_tag_faces_24,
+        viewId = R.id.button_comma
     ),
     setOf(
         Behavior.Press(KeyAction.FcitxKeyAction(","))

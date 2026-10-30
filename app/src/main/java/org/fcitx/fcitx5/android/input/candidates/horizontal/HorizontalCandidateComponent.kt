@@ -6,14 +6,15 @@
 package org.fcitx.fcitx5.android.input.candidates.horizontal
 
 import android.content.res.Configuration
+import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.RectShape
+import android.view.View
 import androidx.core.view.children
-import androidx.core.view.updateLayoutParams
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.lifecycle.lifecycleScope
-import com.google.android.flexbox.FlexWrap
-import com.google.android.flexbox.FlexboxLayoutManager
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -29,7 +30,6 @@ import org.fcitx.fcitx5.android.input.bar.ExpandButtonStateMachine.TransitionEve
 import org.fcitx.fcitx5.android.input.bar.KawaiiBarComponent
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
 import org.fcitx.fcitx5.android.input.candidates.CandidateViewHolder
-import org.fcitx.fcitx5.android.input.candidates.expanded.decoration.FlexboxVerticalDecoration
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.AlwaysFillWidth
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.AutoFillWidth
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.NeverFillWidth
@@ -64,7 +64,7 @@ class HorizontalCandidateComponent :
     }
 
     private var layoutMinWidth = 0
-    private var layoutFlexGrow = 1f
+    private var layoutFillWidth = true
     private var contentScale = 1f
     private var fcitxCandidates = emptyArray<CandidateWord>()
     private var fcitxCandidateTotal = -1
@@ -101,14 +101,6 @@ class HorizontalCandidateComponent :
             override fun onBindViewHolder(holder: CandidateViewHolder, position: Int) {
                 super.onBindViewHolder(holder, position)
                 holder.ui.setContentScale(contentScale)
-                holder.itemView.updateLayoutParams<FlexboxLayoutManager.LayoutParams> {
-                    minWidth = layoutMinWidth
-                    flexGrow = layoutFlexGrow
-                    // Candidate items must retain their measured text width. Letting Flexbox
-                    // shrink them makes every item appear to fit in the toolbar, so the overflow
-                    // state and expanded-candidate button are never enabled.
-                    flexShrink = 0f
-                }
                 holder.itemView.setOnClickListener {
                     candidateOverride?.onCandidateClick?.invoke(holder.idx)
                         ?: fcitx.launchOnReady { it.select(holder.idx) }
@@ -136,10 +128,8 @@ class HorizontalCandidateComponent :
         }
     }
 
-    val layoutManager: FlexboxLayoutManager by lazy {
-        object : FlexboxLayoutManager(context) {
-            override fun canScrollVertically() = false
-            override fun canScrollHorizontally() = true
+    val layoutManager: LinearLayoutManager by lazy {
+        object : LinearLayoutManager(context, RecyclerView.HORIZONTAL, false) {
             override fun onLayoutCompleted(state: RecyclerView.State) {
                 super.onLayoutCompleted(state)
                 val cnt = if (adapter.itemCount > 0) {
@@ -149,8 +139,6 @@ class HorizontalCandidateComponent :
                 }
                 refreshExpanded(cnt)
             }
-            // no need to override `generate{,Default}LayoutParams`, because HorizontalCandidateViewAdapter
-            // guarantees ViewHolder's layoutParams to be `FlexboxLayoutManager.LayoutParams`
         }
     }
 
@@ -163,22 +151,31 @@ class HorizontalCandidateComponent :
         }
     }
 
+    private fun updateItemLayout(width: Int) {
+        if (candidateOverride == null && fillStyle == AutoFillWidth) {
+            layoutMinWidth = (width / maxSpanCountPref.getValue() - dividerDrawable.intrinsicWidth)
+                .coerceAtLeast(0)
+        }
+        adapter.configureLayout(width, layoutMinWidth, layoutFillWidth, dividerDrawable.intrinsicWidth)
+    }
+
     override val view by lazy {
         object : RecyclerView(context) {
             override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
                 super.onSizeChanged(w, h, oldw, oldh)
-                if (fillStyle == AutoFillWidth) {
-                    val maxSpanCount = maxSpanCountPref.getValue()
-                    layoutMinWidth = (w / maxSpanCount - dividerDrawable.intrinsicWidth).coerceAtLeast(0)
-                }
+                updateItemLayout(w)
             }
         }.apply {
             id = R.id.candidate_view
             itemAnimator = null
+            // Edge stretching changes with the finger's vertical position and makes a
+            // held horizontal drag visibly twitch when it turns downwards at an edge.
+            overScrollMode = View.OVER_SCROLL_NEVER
             adapter = this@HorizontalCandidateComponent.adapter
             layoutManager = this@HorizontalCandidateComponent.layoutManager
-            this@HorizontalCandidateComponent.layoutManager.flexWrap = FlexWrap.NOWRAP
-            addItemDecoration(FlexboxVerticalDecoration(dividerDrawable))
+            addItemDecoration(DividerItemDecoration(context, RecyclerView.HORIZONTAL).apply {
+                setDrawable(InsetDrawable(dividerDrawable, 0, context.dp(8), 0, context.dp(8)))
+            })
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     if (dx == 0) return
@@ -226,8 +223,8 @@ class HorizontalCandidateComponent :
         cancelLoading()
         candidateOverride = CandidateOverride(candidates, onCandidateClick)
         layoutMinWidth = 0
-        layoutFlexGrow = 0f
-        layoutManager.flexWrap = FlexWrap.NOWRAP
+        layoutFillWidth = false
+        updateItemLayout(view.width)
         adapter.updateCandidates(candidates, candidates.size)
         view.scrollToPosition(0)
         bar.updateCandidateOverride(candidates.isEmpty(), onClear)
@@ -259,7 +256,6 @@ class HorizontalCandidateComponent :
     fun clearCandidateOverride() {
         if (candidateOverride == null) return
         candidateOverride = null
-        layoutManager.flexWrap = FlexWrap.NOWRAP
         bar.clearCandidateOverride()
         showFcitxCandidates()
     }
@@ -271,21 +267,22 @@ class HorizontalCandidateComponent :
         when (fillStyle) {
             NeverFillWidth -> {
                 layoutMinWidth = 0
-                layoutFlexGrow = 0f
+                layoutFillWidth = false
             }
             AutoFillWidth -> {
                 layoutMinWidth = (view.width / maxSpanCount - dividerDrawable.intrinsicWidth).coerceAtLeast(0)
-                layoutFlexGrow = 1f
+                layoutFillWidth = true
             }
             AlwaysFillWidth -> {
                 layoutMinWidth = 0
-                layoutFlexGrow = 1f
+                layoutFillWidth = true
             }
         }
+        updateItemLayout(view.width)
         adapter.updateCandidates(candidates, total)
         view.stopScroll()
         view.scrollToPosition(0)
-        // not sure why empty candidates won't trigger `FlexboxLayoutManager#onLayoutCompleted()`
+        // Clear the expanded state immediately rather than waiting for the next layout.
         if (candidates.isEmpty()) {
             refreshExpanded(0)
         }

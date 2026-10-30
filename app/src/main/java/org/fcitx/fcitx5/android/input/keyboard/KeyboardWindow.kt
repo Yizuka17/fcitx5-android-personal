@@ -21,6 +21,7 @@ import org.fcitx.fcitx5.android.input.broadcast.ReturnKeyDrawableComponent
 import org.fcitx.fcitx5.android.input.dependency.fcitx
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.handwriting.HandwritingWindow
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import org.fcitx.fcitx5.android.input.popup.PopupActionListener
 import org.fcitx.fcitx5.android.input.popup.PopupComponent
@@ -78,7 +79,13 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
 
     private val keyActionListener = KeyActionListener { it, source ->
         if (it is KeyAction.LayoutSwitchAction) {
-            switchLayout(it.act)
+            if (it.act == TextKeyboard.Name &&
+                HandwritingWindow.isHandwritingInputMethod(fcitx.runImmediately { inputMethodEntryCached })
+            ) {
+                windowManager.attachWindow(HandwritingWindow)
+            } else {
+                switchLayout(it.act)
+            }
         } else {
             commonKeyActionListener.listener.onKeyAction(it, source)
         }

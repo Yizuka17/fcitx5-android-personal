@@ -253,6 +253,11 @@
     <string name="space_behavior_activate">在当前输入法和第一个输入法之间切换</string>
     <string name="space_behavior_picker">显示输入法选择对话框</string>
     <string name="show_lang_switch_key">显示语言切换键</string>
+    <string name="show_emoji_key">显示表情符号键</string>
+    <string name="bottom_bar_swipe_move_cursor">划动底栏以移动光标</string>
+    <string name="separate_preedit_cursor">拼音与文本光标分离（实验性）</string>
+    <string name="separate_preedit_cursor_summary">空格滑动只编辑未完成的拼音；底栏滑动只移动文本光标，并保留未完成的拼音。</string>
+    <string name="show_emoji_key_summary">语言键关闭时，在原位置显示表情键；长按逗号进入符号页，?123 打开九宫格数字键盘。</string>
     <string name="horizontal_candidate_style">横向候选词样式</string>
     <string name="horizontal_candidate_never_fill">从不填充宽度</string>
     <string name="horizontal_candidate_auto_fill">按需填充宽度</string>

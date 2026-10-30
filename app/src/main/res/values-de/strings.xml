@@ -163,6 +163,9 @@
     <string name="space_behavior_none">Nichts</string>
     <string name="space_behavior_activate">An/Aus der Eingabemethode</string>
     <string name="show_lang_switch_key">Sprachwechseltaste anzeigen</string>
+    <string name="show_emoji_key">Emoji-Taste anzeigen</string>
+    <string name="bottom_bar_swipe_move_cursor">Zum Bewegen des Cursors über die untere Leiste wischen</string>
+    <string name="show_emoji_key_summary">Ersetzt die ausgeblendete Sprachtaste durch eine Emoji-Taste. Komma gedrückt halten öffnet Symbole; ?123 öffnet den Ziffernblock.</string>
     <string name="horizontal_candidate_style">Stil der horizonttalen Kandidaten</string>
     <string name="num_items_deleted">%1$d Element(e) gelöscht</string>
     <string name="plugins">Plugins</string>
@@ -384,4 +387,6 @@
     <string name="bottom_bar_emoji">Emoji</string>
     <string name="bottom_bar_no_action">Keine</string>
     <string name="bottom_bar_picker_hint">Gedrückt halten, um eine Eingabemethode auszuwählen</string>
+    <string name="separate_preedit_cursor">Pinyin- und Textcursor trennen (experimentell)</string>
+    <string name="separate_preedit_cursor_summary">Wischen auf der Leertaste bearbeitet nur ausstehendes Pinyin. Die untere Leiste bewegt den Textcursor, ohne das Pinyin zu verwerfen.</string>
 </resources>

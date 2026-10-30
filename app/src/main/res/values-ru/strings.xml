@@ -215,6 +215,9 @@
     <string name="space_behavior_activate">Переключить состояние активации метода ввода</string>
     <string name="space_behavior_picker">Показать диалоговое окно выбора метода ввода</string>
     <string name="show_lang_switch_key">Показываать клавишу переключения языка</string>
+    <string name="show_emoji_key">Показывать клавишу эмодзи</string>
+    <string name="bottom_bar_swipe_move_cursor">Перемещать курсор свайпом по нижней панели</string>
+    <string name="show_emoji_key_summary">Заменяет скрытую клавишу языка клавишей эмодзи. Удерживайте запятую для символов; ?123 открывает цифровую клавиатуру.</string>
     <string name="horizontal_candidate_style">Горизонтальный стиль кандидата</string>
     <string name="horizontal_candidate_never_fill">Никогда не заполнять ширину</string>
     <string name="horizontal_candidate_auto_fill">Ширина заполнения по запросу</string>
@@ -384,4 +387,6 @@
     <string name="bottom_bar_emoji">Эмодзи</string>
     <string name="bottom_bar_no_action">Нет</string>
     <string name="bottom_bar_picker_hint">Удерживайте для выбора метода ввода</string>
+    <string name="separate_preedit_cursor">Разделить курсоры пиньиня и текста (экспериментально)</string>
+    <string name="separate_preedit_cursor_summary">Проведение по пробелу редактирует только незавершённый пиньинь. Нижняя панель перемещает курсор текста, сохраняя пиньинь.</string>
 </resources>

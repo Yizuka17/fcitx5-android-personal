@@ -140,10 +140,29 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     private val composing = CursorRange()
     private var composingText = FormattedText.Empty
+    private var detachedTextCursor = false
 
     private fun resetComposingState() {
+        detachedTextCursor = false
         composing.clear()
         composingText = FormattedText.Empty
+    }
+
+    /** The engine keeps its Pinyin buffer/caret; its temporary client span must not become text. */
+    fun detachPendingPreeditForTextCursor() {
+        if (detachedTextCursor) return
+        val ic = currentInputConnection ?: return
+        detachedTextCursor = true
+        if (composing.isNotEmpty()) {
+            val anchor = composing.start
+            ic.beginBatchEdit()
+            composing.clear()
+            composingText = FormattedText.Empty
+            selection.predict(anchor)
+            ic.setComposingText("", 1)
+            ic.finishComposingText()
+            ic.endBatchEdit()
+        }
     }
 
     private var cursorUpdateIndex: Int = 0
@@ -933,6 +952,8 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
             // cursor update can't match any prediction: it's treated as a user input
             selection.resetTo(newSelStart, newSelEnd)
         }
+        // Text navigation is intentionally independent of the still-pending engine preedit.
+        if (detachedTextCursor) return
         // skip selection range update, we only care about selection cursor (zero width) here
         if (newSelStart != newSelEnd) return
         // do reset if composing is empty && input panel is not empty
@@ -979,6 +1000,10 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     // because of https://android.googlesource.com/platform/frameworks/base.git/+/refs/tags/android-11.0.0_r45/core/java/android/view/inputmethod/BaseInputConnection.java#851
     // it's not possible to set cursor inside composing text
     private fun updateComposingText(text: FormattedText) {
+        if (detachedTextCursor) {
+            if (fcitx.runImmediately { inputMethodEntryCached.languageCode.startsWith("zh") }) return
+            detachedTextCursor = false
+        }
         val ic = currentInputConnection ?: return
         val lastSelection = selection.latest
         ic.beginBatchEdit()
@@ -1107,6 +1132,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        inputView?.cancelBottomBarGesture()
         Timber.d("onFinishInputView: finishingInput=$finishingInput")
         decorLocationUpdated = false
         inputDeviceMgr.onFinishInputView()

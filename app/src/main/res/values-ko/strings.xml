@@ -254,6 +254,9 @@
     <string name="space_behavior_activate">입력 방법 활성화 상태 전환</string>
     <string name="space_behavior_picker">입력 방법 선택기 대화상자 표시</string>
     <string name="show_lang_switch_key">언어 전환 키 표시</string>
+    <string name="show_emoji_key">이모지 키 표시</string>
+    <string name="bottom_bar_swipe_move_cursor">하단 바를 밀어 커서 이동</string>
+    <string name="show_emoji_key_summary">숨긴 언어 키 자리에 이모지 키를 표시합니다. 쉼표를 길게 누르면 기호를, ?123을 누르면 숫자 키패드를 엽니다.</string>
     <string name="horizontal_candidate_style">수평적 후보 스타일</string>
     <string name="horizontal_candidate_never_fill">너비를 채우지 마세요</string>
     <string name="horizontal_candidate_auto_fill">요청 시 채우기 너비</string>
@@ -384,4 +387,6 @@
     <string name="bottom_bar_emoji">이모지</string>
     <string name="bottom_bar_no_action">없음</string>
     <string name="bottom_bar_picker_hint">길게 눌러 입력기 선택</string>
+    <string name="separate_preedit_cursor">병음 및 텍스트 커서 분리 (실험적)</string>
+    <string name="separate_preedit_cursor_summary">스페이스를 밀면 미완성 병음만 편집합니다. 하단 막대는 병음을 유지한 채 텍스트 커서를 이동합니다.</string>
 </resources>

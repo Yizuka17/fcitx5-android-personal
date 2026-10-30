@@ -253,6 +253,11 @@
     <string name="space_behavior_activate">Toggle input method activate state</string>
     <string name="space_behavior_picker">Show input method picker dialog</string>
     <string name="show_lang_switch_key">Show language switch key</string>
+    <string name="show_emoji_key">Show emoji key</string>
+    <string name="bottom_bar_swipe_move_cursor">Swipe bottom bar to move cursor</string>
+    <string name="separate_preedit_cursor">Separate Pinyin and text cursors (experimental)</string>
+    <string name="separate_preedit_cursor_summary">Space swipes edit pending Pinyin only. Bottom-bar swipes move the text cursor while keeping pending Pinyin.</string>
+    <string name="show_emoji_key_summary">When the language key is hidden, show an emoji key in its place. Long-press comma for symbols; ?123 opens the number pad.</string>
     <string name="horizontal_candidate_style">Horizontal candidate style</string>
     <string name="horizontal_candidate_never_fill">Never fill width</string>
     <string name="horizontal_candidate_auto_fill">Fill width on demand</string>

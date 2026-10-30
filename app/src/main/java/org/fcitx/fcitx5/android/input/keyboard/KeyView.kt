@@ -346,11 +346,13 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
 @SuppressLint("ViewConstructor")
 open class TextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.Text) :
     KeyView(ctx, theme, def) {
+    private val baseTextSize = def.textSize
     val mainText = view(::AutoScaleTextView) {
         isClickable = false
         isFocusable = false
         background = null
         text = def.displayText
+        scaleMode = AutoScaleTextView.Mode.Proportional
         setTextSize(TypedValue.COMPLEX_UNIT_DIP, def.textSize)
         textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
         // keep original typeface, apply textStyle only
@@ -374,8 +376,7 @@ open class TextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.Text) 
 
     override fun setContentScale(scale: Float, horizontalScale: Float, verticalScale: Float) {
         super.setContentScale(scale, horizontalScale, verticalScale)
-        mainText.scaleX = contentScale
-        mainText.scaleY = contentScale
+        mainText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, baseTextSize * contentScale)
     }
 }
 
@@ -474,8 +475,7 @@ class AltTextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.AltText)
 
     override fun setContentScale(scale: Float, horizontalScale: Float, verticalScale: Float) {
         super.setContentScale(scale, horizontalScale, verticalScale)
-        altText.scaleX = contentScale
-        altText.scaleY = contentScale
+        altText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10.666667f * contentScale)
         applyLayout(styleOrientation())
     }
 }
@@ -487,7 +487,7 @@ class ImageKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.Image) :
 
     init {
         appearanceView.apply {
-            add(img, lParams(wrapContent, wrapContent) {
+            add(img, lParams(dp(24), dp(24)) {
                 centerInParent()
             })
         }
@@ -495,8 +495,7 @@ class ImageKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.Image) :
 
     override fun setContentScale(scale: Float, horizontalScale: Float, verticalScale: Float) {
         super.setContentScale(scale, horizontalScale, verticalScale)
-        img.scaleX = contentScale
-        img.scaleY = contentScale
+        img.updateLayoutParams { width = scaledDp(24); height = scaledDp(24) }
     }
 }
 
@@ -511,6 +510,7 @@ private fun ImageView.configure(theme: Theme, @DrawableRes src: Int, variant: Va
         }
     )
     imageResource = src
+    scaleType = ImageView.ScaleType.CENTER_INSIDE
 }
 
 @SuppressLint("ViewConstructor")
@@ -564,8 +564,7 @@ class ImageTextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.ImageT
 
     override fun setContentScale(scale: Float, horizontalScale: Float, verticalScale: Float) {
         super.setContentScale(scale, horizontalScale, verticalScale)
-        img.scaleX = contentScale
-        img.scaleY = contentScale
+        img.updateLayoutParams { width = scaledDp(13); height = scaledDp(13) }
         updateMargins(styleOrientation())
     }
 }
