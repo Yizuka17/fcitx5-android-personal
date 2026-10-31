@@ -66,6 +66,7 @@ import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.cursor.CursorRange
 import org.fcitx.fcitx5.android.input.cursor.CursorTracker
+import org.fcitx.fcitx5.android.input.cursor.TextCursorNavigator
 import org.fcitx.fcitx5.android.input.keyboard.OneHandedMode
 import org.fcitx.fcitx5.android.utils.InputMethodUtil
 import org.fcitx.fcitx5.android.utils.alpha
@@ -528,6 +529,11 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         if (lastSelection.isEmpty()) return
         selection.predict(lastSelection.start)
         currentInputConnection?.commitText("", 1)
+    }
+
+    fun moveSeparatedTextCursor(left: Boolean) {
+        val ic = currentInputConnection ?: return
+        TextCursorNavigator.move(ic, selection.latest, left)?.let { selection.predict(it) }
     }
 
     fun sendCombinationKeyEvents(

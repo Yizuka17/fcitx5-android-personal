@@ -5,7 +5,6 @@
 
 package org.fcitx.fcitx5.android.input.keyboard
 
-import android.view.KeyEvent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -101,10 +100,7 @@ class CommonKeyActionListener :
             service.postFcitxJob {
                 if (hasPendingChinesePreedit()) service.detachPendingPreeditForTextCursor()
                 else if (!isEmpty()) commitAndReset()
-                service.sendCombinationKeyEvents(
-                    if (action.sym.sym == FcitxKeyMapping.FcitxKey_Left) KeyEvent.KEYCODE_DPAD_LEFT
-                    else KeyEvent.KEYCODE_DPAD_RIGHT
-                )
+                service.moveSeparatedTextCursor(action.sym.sym == FcitxKeyMapping.FcitxKey_Left)
             }
         }
     }
