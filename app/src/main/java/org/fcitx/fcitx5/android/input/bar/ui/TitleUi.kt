@@ -69,9 +69,9 @@ class TitleUi(override val ctx: Context, theme: Theme) : Ui {
 
     fun setContentScale(toolbarScale: Float, textScale: Float) {
         this.toolbarScale = toolbarScale
-        backButton.setContentScale(toolbarScale * TITLE_ICON_SCALE)
+        backButton.setContentScale(toolbarScale)
         titleText.textSize = 16f * textScale
-        extension?.let { scaleToolButtons(it, toolbarScale * TITLE_ICON_SCALE) }
+        extension?.let { scaleToolButtons(it, toolbarScale) }
     }
 
     fun addExtension(view: View, showTitle: Boolean) {
@@ -81,7 +81,7 @@ class TitleUi(override val ctx: Context, theme: Theme) : Ui {
         backButton.isVisible = showTitle
         titleText.isVisible = showTitle
         extension = view
-        scaleToolButtons(view, toolbarScale * TITLE_ICON_SCALE)
+        scaleToolButtons(view, toolbarScale)
         root.run {
             add(view, lParams(matchConstraints, dp(40)) {
                 centerVertically()
@@ -112,8 +112,4 @@ class TitleUi(override val ctx: Context, theme: Theme) : Ui {
         }
     }
 
-    private companion object {
-        // Back/settings actions have their own 40dp cells, so retain generous visible icons.
-        const val TITLE_ICON_SCALE = 32f / 24f
-    }
 }

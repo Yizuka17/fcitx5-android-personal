@@ -107,8 +107,16 @@ class CompactKeyboardUiTest {
         }
         title.addExtension(extension, true)
         layout(title.root, ctx.dp(252), ctx.dp(40))
-        title.root.allViews.filterIsInstance<ImageView>().forEach {
-            assertEquals(ctx.dp(32f) * .825f, it.width.toFloat(), 1f)
+        for (scale in listOf(.825f, .9f, 1f, .825f)) {
+            title.setContentScale(scale, .8f)
+            layout(title.root, ctx.dp(252), ctx.dp(40))
+            val toolbarButton = ToolButton(ctx, R.drawable.ic_baseline_more_horiz_24, theme)
+            toolbarButton.setContentScale(scale)
+            layout(toolbarButton, ctx.dp(40), ctx.dp(40))
+            val toolbarIcon = toolbarButton.allViews.filterIsInstance<ImageView>().first()
+            title.root.allViews.filterIsInstance<ImageView>().forEach {
+                assertEquals("More-page back/settings must match the normal toolbar", toolbarIcon.width, it.width)
+            }
         }
         val configuration = android.content.res.Configuration(ctx.resources.configuration).apply { fontScale = 1.8f }
         val largeFontCtx = ContextThemeWrapper(ctx.createConfigurationContext(configuration), R.style.Theme_FcitxAppTheme)
