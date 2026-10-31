@@ -24,6 +24,9 @@ import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.ThemePreset
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.bar.ui.CandidateUi
+import org.fcitx.fcitx5.android.input.bar.ui.TitleUi
+import org.fcitx.fcitx5.android.input.status.StatusAreaEntryUi
+import org.fcitx.fcitx5.android.input.status.StatusAreaEntry
 import org.fcitx.fcitx5.android.input.bar.ui.idle.ButtonsBarUi
 import org.fcitx.fcitx5.android.input.handwriting.HandwritingKeyboard
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction
@@ -57,23 +60,24 @@ class CompactKeyboardUiTest {
     }
 
     @Test
-    fun narrowToolbarIconsGrowByFiftyPercentAndFitTheirCells() = instrumentation.runOnMainSync {
+    fun toolbarIconsResizeContinuouslyWithoutFlexboxFeedback() = instrumentation.runOnMainSync {
         val ctx = context
         val toolbar = ButtonsBarUi(ctx, theme)
-        toolbar.setContentScale(.9f)
-        layout(toolbar.root, ctx.dp(172), ctx.dp(40))
-        val reference = ToolButton(ctx, R.drawable.ic_baseline_expand_more_24, theme)
-        reference.setContentScale(.9f)
-        layout(reference, ctx.dp(40), ctx.dp(40))
-        val referenceSize = reference.allViews.filterIsInstance<ImageView>().first().width
-        toolbar.root.allViews.filterIsInstance<ImageView>().forEach {
-            val cell = it.parent as View
-            val oldContent = minOf(cell.width - ctx.dp(20), cell.height - ctx.dp(20)).coerceAtLeast(1)
-            val previous = minOf(referenceSize, kotlin.math.round(oldContent * .9f * 1.5f).toInt())
-            val expected = minOf(referenceSize, (previous * 1.5f + .5f).toInt())
-            assertEquals(expected, it.width)
-            assertEquals(1f, it.scaleX, 0f)
-            assertTrue(it.width >= ctx.dp(11))
+        var previous = 0
+        for (percent in 65..100) {
+            val widthScale = percent / 100f
+            val scale = .5f + .5f * widthScale
+            toolbar.setContentScale(scale)
+            layout(toolbar.root, ctx.dp(390f * widthScale - 80).toInt(), ctx.dp(40))
+            toolbar.root.allViews.filterIsInstance<ImageView>().forEach {
+                assertEquals(ctx.dp(24f) * scale, it.width.toFloat(), 1f)
+                assertEquals(1f, it.scaleX, 0f)
+                assertTrue(it.width <= (it.parent as View).width)
+            }
+            val size = toolbar.root.allViews.filterIsInstance<ImageView>().first().width
+            assertTrue("Growing the keyboard cannot shrink its icons", size >= previous)
+            if (previous > 0) assertTrue("One resize step must not cause an icon jump", size - previous <= 1)
+            previous = size
         }
     }
 
@@ -90,6 +94,34 @@ class CompactKeyboardUiTest {
             assertEquals(ctx.dp(24f) * scale, expand.width.toFloat(), 1f)
             assertTrue("Clear must remain smaller than the expand icon", clear.width < expand.width)
         }
+    }
+
+    @Test
+    fun morePageIconsAndLabelsFitMinimumFloatingSize() = instrumentation.runOnMainSync {
+        val ctx = context
+        val title = TitleUi(ctx, theme)
+        title.setContentScale(.825f, .8f)
+        val settings = ToolButton(ctx, R.drawable.ic_baseline_settings_24, theme)
+        val extension = android.widget.FrameLayout(ctx).apply {
+            addView(settings, android.widget.FrameLayout.LayoutParams(ctx.dp(40), ctx.dp(40)))
+        }
+        title.addExtension(extension, true)
+        layout(title.root, ctx.dp(252), ctx.dp(40))
+        title.root.allViews.filterIsInstance<ImageView>().forEach {
+            assertEquals(ctx.dp(32f) * .825f, it.width.toFloat(), 1f)
+        }
+        val configuration = android.content.res.Configuration(ctx.resources.configuration).apply { fontScale = 1.8f }
+        val largeFontCtx = ContextThemeWrapper(ctx.createConfigurationContext(configuration), R.style.Theme_FcitxAppTheme)
+        val entry = StatusAreaEntryUi(largeFontCtx, theme)
+        entry.setEntry(StatusAreaEntry.Android("输入法设置", R.drawable.ic_baseline_language_24, StatusAreaEntry.Android.Type.InputMethod))
+        entry.setContentScale(.5f)
+        layout(entry.root, largeFontCtx.dp(63), entry.root.layoutParams.height)
+        val textLayout = requireNotNull(entry.label.layout)
+        for (line in 0 until textLayout.lineCount) assertEquals(0, textLayout.getEllipsisCount(line))
+        val bounds = Rect(0, 0, entry.label.width, entry.label.height)
+        (entry.root as ViewGroup).offsetDescendantRectToMyCoords(entry.label, bounds)
+        assertTrue("The full settings label must remain inside its cell", bounds.bottom <= entry.root.height)
+        assertEquals(1f, entry.label.scaleX, 0f)
     }
 
     @Test

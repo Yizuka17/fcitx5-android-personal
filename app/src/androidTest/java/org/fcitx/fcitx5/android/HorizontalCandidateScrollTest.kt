@@ -145,6 +145,24 @@ class HorizontalCandidateScrollTest {
     }
 
     @Test
+    fun compactCandidatesShrinkTheirMeasuredWordsAndPadding() = withList { list, adapter, _ ->
+        adapter.configureLayout(list.width, 0, false, 0)
+        adapter.updateCandidates(Array(20) { CandidateWord("", "候选词语$it", "") }, 20)
+        layout(list)
+        val normalWidth = list.getChildAt(0).width
+        val normalCount = list.childCount
+        adapter.setContentScale(.5f)
+        layout(list)
+        val small = list.getChildAt(0)
+        assertEquals(normalWidth / 2f, small.width.toFloat(), list.context.dp(2f))
+        assertEquals(list.context.dp(5f), small.paddingLeft.toFloat(), 1f)
+        assertTrue("Compact words should leave room for additional candidates", list.childCount > normalCount)
+        adapter.setContentScale(1f)
+        layout(list)
+        assertEquals(normalWidth, list.getChildAt(0).width)
+    }
+
+    @Test
     fun shortListsFillWidthAndResizeOrAppendCanBecomeScrollable() = withList { list, adapter, _ ->
         adapter.configureLayout(list.width, list.width / 3, true, 0)
         adapter.updateCandidates(arrayOf(CandidateWord("", "甲", ""), CandidateWord("", "乙", "")), 120)

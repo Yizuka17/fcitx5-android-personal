@@ -883,7 +883,8 @@ class InputView internal constructor(
         val widthScale = (panelWidth - dp(FloatingKeyboardControls.GUTTER_DP)).toFloat() / availableWidth
         val heightScale = currentKeyboardHeight.toFloat() / baseKeyboardHeight
         val contentScale = min(widthScale, heightScale).coerceIn(MIN_KEY_CONTENT_SCALE, 1f)
-        val toolbarScale = widthScale.coerceIn(MIN_TOOLBAR_CONTENT_SCALE, 1f)
+        // Compress the scaling range to keep small icons readable, without an early plateau.
+        val toolbarScale = (.5f + .5f * widthScale).coerceIn(MIN_TOOLBAR_CONTENT_SCALE, 1f)
         bottomBar.setContentScale(contentScale.coerceAtLeast(.65f))
         val barTextScale = MIN_BAR_TEXT_SCALE +
             (1f - MIN_BAR_TEXT_SCALE) * widthScale.coerceIn(0f, 1f)
@@ -1057,7 +1058,7 @@ class InputView internal constructor(
         const val ONE_HANDED_CONTROL_ICON_PADDING_RATIO = 8f / 39f
         const val ONE_HANDED_CONTROL_HALF_GAP = 1.15f / 6f
         const val MIN_KEY_CONTENT_SCALE = 0.5f
-        const val MIN_TOOLBAR_CONTENT_SCALE = 0.9f
+        const val MIN_TOOLBAR_CONTENT_SCALE = 0.75f
         const val MIN_BAR_TEXT_SCALE = 0.8f
         const val DEFAULT_FLOATING_CORNER_RATIO = 0.06f
     }

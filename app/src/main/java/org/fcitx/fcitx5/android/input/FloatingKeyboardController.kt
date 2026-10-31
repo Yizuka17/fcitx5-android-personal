@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewConfiguration
 import android.view.WindowInsets
 import androidx.annotation.Keep
 import androidx.core.view.WindowInsetsCompat
@@ -20,6 +21,7 @@ import splitties.dimensions.dp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.hypot
 
 /**
  * Manual floating-mode choices belong to the current IME service session. Keeping them outside
@@ -183,6 +185,11 @@ internal class FloatingKeyboardController(
     private var gesturePanelY = 0f
     private var gesturePanelWidth = 0
     private var gestureKeyboardHeight = 0
+    private val touchConfig = ViewConfiguration.get(host.context)
+    private var dragMoved = false
+    private var lastDragTapUp = Long.MIN_VALUE
+    private var lastDragTapX = 0f
+    private var lastDragTapY = 0f
 
     private enum class Gesture {
         None,
@@ -289,6 +296,7 @@ internal class FloatingKeyboardController(
             return
         }
         isFloating = floating
+        lastDragTapUp = Long.MIN_VALUE
         controls.visibility = if (floating) View.VISIBLE else View.GONE
         panel.elevation = if (floating) host.context.dp(8).toFloat() else 0f
         keyboardHeightPx = null
@@ -519,6 +527,7 @@ internal class FloatingKeyboardController(
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     beginGesture(Gesture.Drag, event)
+                    dragMoved = false
                     view.parent.requestDisallowInterceptTouchEvent(true)
                     true
                 }
@@ -527,6 +536,9 @@ internal class FloatingKeyboardController(
                     if (gesture != Gesture.Drag) return@setOnTouchListener false
                     val dx = event.rawX - gestureRawX
                     val dy = event.rawY - gestureRawY
+                    if (!dragMoved && hypot(dx, dy) <= touchConfig.scaledTouchSlop) return@setOnTouchListener true
+                    dragMoved = true
+                    lastDragTapUp = Long.MIN_VALUE
                     panel.translationX = gesturePanelX + dx
                     panel.translationY = gesturePanelY + dy
                     keepPanelInsideSafeArea()
@@ -534,7 +546,19 @@ internal class FloatingKeyboardController(
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (gesture == Gesture.Drag) finishGesture(view, event)
+                    if (gesture == Gesture.Drag) {
+                        val tapped = event.actionMasked == MotionEvent.ACTION_UP && !dragMoved &&
+                            hypot(event.rawX - gestureRawX, event.rawY - gestureRawY) <= touchConfig.scaledTouchSlop &&
+                            event.eventTime - event.downTime < ViewConfiguration.getLongPressTimeout()
+                        val sinceTap = if (lastDragTapUp == Long.MIN_VALUE) Long.MAX_VALUE else event.eventTime - lastDragTapUp
+                        val doubleTap = tapped && sinceTap in 0..ViewConfiguration.getDoubleTapTimeout().toLong() &&
+                            hypot(event.rawX - lastDragTapX, event.rawY - lastDragTapY) <= touchConfig.scaledDoubleTapSlop
+                        finishGesture(view, event)
+                        lastDragTapUp = if (tapped && !doubleTap) event.eventTime else Long.MIN_VALUE
+                        lastDragTapX = event.rawX
+                        lastDragTapY = event.rawY
+                        if (doubleTap) setFloating(false)
+                    }
                     true
                 }
 
@@ -544,6 +568,7 @@ internal class FloatingKeyboardController(
         resizeHandle.setOnTouchListener { view, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    lastDragTapUp = Long.MIN_VALUE
                     beginGesture(Gesture.Resize, event)
                     view.parent.requestDisallowInterceptTouchEvent(true)
                     true

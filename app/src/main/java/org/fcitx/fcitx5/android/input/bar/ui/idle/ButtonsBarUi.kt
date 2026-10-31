@@ -59,7 +59,7 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
             .roundToInt()
             .coerceAtLeast(ctx.dp(MIN_BUTTON_SIZE_DP))
         toolButtons.forEach {
-            it.setCompactContentScale(scale)
+            it.setContentScale(scale)
             it.layoutParams = (it.layoutParams as FlexboxLayout.LayoutParams).apply {
                 width = buttonSize
                 height = buttonSize

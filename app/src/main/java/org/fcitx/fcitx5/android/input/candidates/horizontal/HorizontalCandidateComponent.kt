@@ -42,6 +42,7 @@ import org.fcitx.fcitx5.android.input.dependency.theme
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 class HorizontalCandidateComponent :
     UniqueViewComponent<HorizontalCandidateComponent, RecyclerView>(), InputBroadcastReceiver {
@@ -123,6 +124,8 @@ class HorizontalCandidateComponent :
     fun setContentScale(scale: Float) {
         if (contentScale == scale) return
         contentScale = scale
+        adapter.setContentScale(scale)
+        updateItemLayout(view.width)
         view.children.forEach {
             (view.getChildViewHolder(it) as? CandidateViewHolder)?.ui?.setContentScale(scale)
         }
@@ -156,7 +159,8 @@ class HorizontalCandidateComponent :
             layoutMinWidth = (width / maxSpanCountPref.getValue() - dividerDrawable.intrinsicWidth)
                 .coerceAtLeast(0)
         }
-        adapter.configureLayout(width, layoutMinWidth, layoutFillWidth, dividerDrawable.intrinsicWidth)
+        adapter.configureLayout(width, (layoutMinWidth * contentScale).roundToInt(),
+            layoutFillWidth && contentScale >= 1f, dividerDrawable.intrinsicWidth)
     }
 
     override val view by lazy {

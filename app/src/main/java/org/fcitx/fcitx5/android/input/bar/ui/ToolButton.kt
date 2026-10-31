@@ -40,7 +40,6 @@ class ToolButton(context: Context) : CustomGestureView(context) {
         scaleType = ImageView.ScaleType.CENTER_INSIDE
     }
     private var contentScale = 1f
-    private var compactSizing = false
 
     var iconRotation: Float
         get() = image.rotation
@@ -62,26 +61,14 @@ class ToolButton(context: Context) : CustomGestureView(context) {
     }
 
     fun setContentScale(scale: Float) {
-        compactSizing = false
-        contentScale = scale
-        updateIconSize()
-    }
-
-    fun setCompactContentScale(scale: Float) {
-        compactSizing = true
         contentScale = scale
         updateIconSize()
     }
 
     private fun updateIconSize(availableWidth: Int = width, availableHeight: Int = height) {
-        var requested = (dp(24f) * contentScale).roundToInt()
-        if (compactSizing && availableWidth > 0 && availableHeight > 0) {
-            // The old wrap-content image lost 10dp padding on every edge before scaling.
-            // Enlarge the 0.1.4 compact icon by another 50%, capped at a normal icon.
-            val oldContent = min((availableWidth - dp(20)).coerceAtLeast(1), (availableHeight - dp(20)).coerceAtLeast(1))
-            val previousSize = min(requested, (oldContent * contentScale * 1.5f).roundToInt())
-            requested = min(requested, (previousSize * 1.5f).roundToInt())
-        }
+        // The requested size depends only on the keyboard scale. Flexbox's intermediate
+        // measurement widths must never feed back into it while the panel is being resized.
+        val requested = (dp(24f) * contentScale).roundToInt()
         val size = min(requested, min(availableWidth.takeIf { it > 0 } ?: requested,
             availableHeight.takeIf { it > 0 } ?: requested))
         if (image.layoutParams != null && (image.layoutParams.width != size || image.layoutParams.height != size)) {

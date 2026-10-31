@@ -8,6 +8,7 @@ import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
+import android.text.TextUtils
 import android.icu.text.BreakIterator
 import android.os.Build
 import android.util.TypedValue
@@ -28,6 +29,8 @@ import splitties.views.dsl.constraintlayout.centerOn
 import splitties.views.dsl.constraintlayout.constraintLayout
 import splitties.views.dsl.constraintlayout.lParams
 import splitties.views.dsl.constraintlayout.topOfParent
+import splitties.views.dsl.constraintlayout.leftOfParent
+import splitties.views.dsl.constraintlayout.rightOfParent
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.frameLayout
@@ -40,6 +43,7 @@ import splitties.views.dsl.core.wrapContent
 import splitties.views.gravityCenter
 import splitties.views.imageDrawable
 import kotlin.math.roundToInt
+import kotlin.math.max
 
 class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : Ui {
 
@@ -68,6 +72,8 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         textSize = 12f
         gravity = gravityCenter
         setTextColor(theme.keyTextColor)
+        maxLines = 2
+        ellipsize = TextUtils.TruncateAt.END
     }
 
     private val content = constraintLayout {
@@ -82,9 +88,10 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         add(textIcon, lParams(wrapContent, wrapContent) {
             centerOn(bkg)
         })
-        add(label, lParams(wrapContent, wrapContent) {
+        add(label, lParams(0, wrapContent) {
             below(bkg, dp(6))
-            centerHorizontally()
+            leftOfParent(dp(4))
+            rightOfParent(dp(4))
         })
     }
 
@@ -104,15 +111,16 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         }
         label.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topMargin = (ctx.dp(6) * scaled).roundToInt()
+            leftMargin = (ctx.dp(4) * scaled).roundToInt()
+            rightMargin = leftMargin
         }
-        icon.scaleX = scaled
-        icon.scaleY = scaled
-        textIcon.scaleX = scaled
-        textIcon.scaleY = scaled
-        label.scaleX = scaled
-        label.scaleY = scaled
+        icon.updateLayoutParams { width = (ctx.dp(24) * scaled).roundToInt(); height = width }
+        textIcon.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20f * scaled)
+        label.textSize = 12f * scaled
         root.layoutParams = root.layoutParams.apply {
-            height = (ctx.dp(96) * scaled).roundToInt()
+            // Prefer a taller scrollable cell over clipping labels under larger system fonts.
+            height = max((ctx.dp(96) * scaled).roundToInt(),
+                (ctx.dp(62) * scaled).roundToInt() + label.lineHeight * 2)
         }
     }
 

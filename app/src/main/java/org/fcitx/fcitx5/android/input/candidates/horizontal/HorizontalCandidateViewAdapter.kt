@@ -20,6 +20,7 @@ import splitties.dimensions.dp
 import splitties.views.dsl.core.matchParent
 import splitties.views.dsl.core.wrapContent
 import splitties.views.setPaddingDp
+import kotlin.math.roundToInt
 
 open class HorizontalCandidateViewAdapter(val theme: Theme) :
     RecyclerView.Adapter<CandidateViewHolder>() {
@@ -39,6 +40,23 @@ open class HorizontalCandidateViewAdapter(val theme: Theme) :
     private var fillWidth = false
     private var dividerWidth = 0
     private var filledItemWidths = intArrayOf()
+    private var contentScale = 1f
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun setContentScale(scale: Float) {
+        if (contentScale == scale) return
+        contentScale = scale
+        measurementUi?.let(::scaleCandidate)
+        updateFilledWidths()
+        notifyDataSetChanged()
+    }
+
+    private fun scaleCandidate(ui: CandidateItemUi) {
+        ui.setContentScale(contentScale)
+        val padding = (ui.root.dp(10) * contentScale).roundToInt()
+        ui.root.setPadding(padding, 0, padding, 0)
+        ui.root.minimumWidth = maxOf((ui.root.dp(40) * contentScale).roundToInt(), minimumItemWidth)
+    }
 
     @SuppressLint("NotifyDataSetChanged")
     fun configureLayout(width: Int, minWidth: Int, fill: Boolean, divider: Int) {
@@ -62,7 +80,7 @@ open class HorizontalCandidateViewAdapter(val theme: Theme) :
         var used = 0
         for (i in candidates.indices) {
             ui.updateCandidate(candidates[i])
-            ui.root.minimumWidth = maxOf(ui.root.dp(40), minimumItemWidth)
+            scaleCandidate(ui)
             ui.root.measure(
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
@@ -133,7 +151,7 @@ open class HorizontalCandidateViewAdapter(val theme: Theme) :
     @CallSuper
     override fun onBindViewHolder(holder: CandidateViewHolder, position: Int) {
         holder.update(position, candidates[position])
-        holder.itemView.minimumWidth = maxOf(holder.itemView.dp(40), minimumItemWidth)
+        scaleCandidate(holder.ui)
         holder.itemView.layoutParams.width = filledItemWidths.getOrNull(position) ?: ViewGroup.LayoutParams.WRAP_CONTENT
     }
 

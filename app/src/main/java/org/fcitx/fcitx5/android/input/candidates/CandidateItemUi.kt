@@ -63,7 +63,7 @@ class CandidateItemUi(override val ctx: Context, val theme: Theme) : Ui {
     }
 
     fun setContentScale(scale: Float) {
-        text.scaleX = scale
-        text.scaleY = scale
+        // Measure the scaled glyphs rather than reserving a full-size word and shrinking its drawing.
+        text.textSize = 20f * scale
     }
 }
